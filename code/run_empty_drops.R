@@ -1,15 +1,43 @@
 library(DropletUtils)
 library(glue)
+# setwd(dirname(rstudioapi::getActiveDocumentContext()$path))
+
+
+## Фильтрование баркодов из сырой матрицы при помощи EmptyDrops
+filter_barcodes_with_emptyDrops <- function(sparse_matrix, lower = 100, test.ambient = TRUE) {
+  emptyDrops_df = emptyDrops(sparse_matrix, lower = lower, test.ambient = test.ambient)
+  emptyDrops_df$FDR[is.na(emptyDrops_df$FDR)] <- 1 # выставляю всем NA FDR единичку
+  return(emptyDrops_df)
+}
+
+return_filtered_barcodes_indeces <- function(emptyDrops_df, fdr_threshold = 0.05) {
+  filtered_barcodes_indeces <- which(emptyDrops_df$FDR < fdr_threshold) #список со всеми отфильтр. баркодами
+  return(filtered_barcodes_indeces)
+}
+#Пример фильтрации
+matrix_1_raw <- readMM('../../data/Species_mixing/Solo.out_1/GeneFull/raw/matrix.mtx')
+emptyDrops_df <- filter_barcodes_with_emptyDrops(matrix_1_raw)
+
+
+filtered_barcodes_indeces <- return_filtered_barcodes_indeces(emptyDrops_df, fdr_threshold = 0.05) #список со всеми отфильтр. баркодами
+
+
+
 
 #Считывание данных
-
 #Here I only work with GeneFull data, Gene data is not considered
-base_dir <- './data/Species_mixing'
+base_dir <- '/home/vgrigoriants/projects/ib_project/data/Species_mixing'
 samples_dirs <- c(glue('{base_dir}/Solo.out_1/GeneFull/raw'),
              glue('{base_dir}/Solo.out_2/GeneFull/raw'))
 names(samples_dirs) <- c('1_raw', '2_raw')
 sce_1 <- read10xCounts(samples_dirs[1], type = 'sparse')
 sce_2 <- read10xCounts(samples_dirs[2], type = 'sparse')
+
+
+
+
+
+
 
 
 # Добавляю точку перегиба и inflection с knee-plot-а  в метадату SCE объекта - почему бы и нет
@@ -27,6 +55,9 @@ sce_2@metadata$inflection <-  br.out@metadata$inflection
 # }
 
 
+
+
+
 # Запуск empty_Drops - считает не сказать чтоб супер быстро, пару минут мб. Думаю разумно запускать с lower 10-30. Дефолт - 100
 sce_1_emptyDrops_10_df <- emptyDrops(sce_1, retain = sce_1@metadata$knee, 
                                   test.ambient = TRUE, lower = 10) # lower - порог по UMI counts, ниже которого точно пустые капли
@@ -38,12 +69,11 @@ sce_2_emptyDrops_10_df <- emptyDrops(sce_2, retain = sce_1@metadata$knee,
 
 add_fdrs_to_barcodes <- function(sce_object, empty_drops_df) { 
   empty_drops_df$FDR[is.na(empty_drops_df$FDR)] <- 1 #выставляю всем NA FDR единичку
-  sce_object@colData$EmptyDrops_fdr <- empty_drops_df$FDR
+  sce_object$EmptyDrops_fdr <- empty_drops_df$FDR
   return(sce_object)
 } #добавляет инфу по FDRs в SCE object, дальше можно фильтровать
 sce_1 <- add_fdrs_to_barcodes(sce_1, sce_1_emptyDrops_10_df)
 sce_2 <- add_fdrs_to_barcodes(sce_2, sce_2_emptyDrops_10_df)
-
 
 plot_barcode_rank_plot <- function(sce_object, title='title', 
                                    color1='red', 
@@ -73,16 +103,14 @@ plot_barcode_rank_plot <- function(sce_object, title='title',
 } #строит knee-plot, может красить капли по условию
 
 #Можно делать Knee-плоты
-par(mfrow=c(2,2))
-for (fdr_threshold in c(0.05, 0.01, 0.001, 0.0001)) { 
+par(mfrow=c(2,4))
+for (fdr_threshold in c(0.05, 0.01, 0.001, 0.0001)) {
 plot_barcode_rank_plot(sce_object =  sce_1, 
                        title = 'Solo_1_raw',
                        color_by = 'emptyDrops',
                        fdr_threshold = fdr_threshold)
 }
-
-par(mfrow=c(2,2))
-for (fdr_threshold in c(0.05, 0.01, 0.001, 0.0001)) { 
+for (fdr_threshold in c(0.05, 0.01, 0.001, 0.0001)) {
   plot_barcode_rank_plot(sce_object =  sce_2, 
                          title = 'Solo_2_raw',
                          color_by = 'emptyDrops',
