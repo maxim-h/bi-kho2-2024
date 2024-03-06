@@ -51,8 +51,9 @@ umi_gene_dist <- function(counts_path, barcodes_path, genes_path, file_name){
           axis.title=element_text(size=16,face="bold"))
 
   #Calculate mitochondrial genes content
-  mito_genes <- grep(pattern = "MT-", genes$X2, value = TRUE)
-  percent_vector <- c(sum(counts[rownames(counts) %in% mito_genes, ]) / sum(counts), 1 - (sum(counts[rownames(counts) %in% mito_genes, ]) / sum(counts)))
+  mito_genes <- c(grep(pattern = c("mt-"), genes$X2, value = TRUE), grep(pattern = c("MT-"), genes$X2, value = TRUE))
+  mito_genes_ens <- (filter(genes, X2 %in% mito_genes))$X1
+  percent_vector <- c(round(sum(counts[rownames(counts) %in% mito_genes_ens, ]) / sum(counts), 4), 1 - round(sum(counts[rownames(counts) %in% mito_genes_ens, ]) / sum(counts), 4))
   label_vector <- c('MT', 'NonMT')
   
   #Create DF for piechart
@@ -120,45 +121,62 @@ sample_dist <- function(counts_path_s1, barcodes_path_s1, genes_path_s1,
   colnames(counts_s1) <- cell_ids_s1
   
   #Calculate UMI per cell barcode distribution
-  umi_per_CB_s1 <- Matrix::colSums(counts_s1)[Matrix::colSums(counts_s1) > 0]
+  umi_per_CB_s1_mtx <- Matrix::colSums(counts_s1)[Matrix::colSums(counts_s1) > 0]
   
   #Convert to DF
-  DF_umi_per_CB_s1 <- as.data.frame(umi_per_CB_s1)
+  DF_umi_per_CB_s1 <- as.data.frame(umi_per_CB_s1_mtx)
   
   #----------------------------------------Import Solo2-----------------------------------------------------------------------------------------------
   
   #Read files
-  counts_s2 <- Matrix::readMM("Data/Solo.out_2/GeneFull/raw/matrix.mtx.gz")
-  genes_s2 <- readr::read_tsv("Data/Solo.out_2/GeneFull/raw/features.tsv.gz", col_names = FALSE)
+  counts_s2 <- Matrix::readMM(counts_path_s2)
+  genes_s2 <- readr::read_tsv(genes_path_s2, col_names = FALSE)
   gene_ids_s2 <- genes_s2$X1
-  cell_ids_s2 <- readr::read_tsv("Data/Solo.out_2/GeneFull/raw/barcodes.tsv.gz", col_names = FALSE)$X1
+  cell_ids_s2 <- readr::read_tsv(barcodes_path_s2, col_names = FALSE)$X1
   
   #Assign row and colnames
   rownames(counts_s2) <- gene_ids_s2
   colnames(counts_s2) <- cell_ids_s2
   
   #Calculate UMI per cell barcode distribution
-  umi_per_CB_s2 <- Matrix::colSums(counts_s2)[Matrix::colSums(counts_s2) > 0]
+  umi_per_CB_s2_mtx <- Matrix::colSums(counts_s2)[Matrix::colSums(counts_s2) > 0]
   
   #Convert to DF
-  DF_umi_per_CB_s2 <- as.data.frame(umi_per_CB_s2)
+  DF_umi_per_CB_s2 <- as.data.frame(umi_per_CB_s2_mtx)
   
-  #----------------------------------------Create distributions----------------------------------------------------------------------------------------------
+  #----------------------------------------Calculate distributions----------------------------------------------------------------------------------------------
   
   #Merge dataset
   DF_umi_per_CB_s1_s2 <- merge(DF_umi_per_CB_s1, DF_umi_per_CB_s2, 
-                               by = 'row.names', all = TRUE)
+                               by = 'row.names', all = FALSE)
+  
+  colnames(DF_umi_per_CB_s1_s2) <- c('Barcodes', 'umi_per_CB_s1', 'umi_per_CB_s2')
   
   #Replcase NA's with 0
   DF_umi_per_CB_s1_s2[is.na(DF_umi_per_CB_s1_s2)] <- 0
   
   #Calculate distribution
   DF_umi_per_CB_s1_s2 <- DF_umi_per_CB_s1_s2 %>%
-    mutate(dist_s1 = round(umi_per_CB_s1/(umi_per_CB_s1 + umi_per_CB_s2),4)) %>%
-    mutate(dist_s2 = round(umi_per_CB_s2/(umi_per_CB_s1 + umi_per_CB_s2),4))
+    mutate(dist_s1 = round(umi_per_CB_s1/(umi_per_CB_s1 + umi_per_CB_s2),5)) %>%
+    mutate(dist_s2 = round(umi_per_CB_s2/(umi_per_CB_s1 + umi_per_CB_s2),5)) %>%
+    mutate(sum = umi_per_CB_s1 + umi_per_CB_s2)
   
+  #----------------------------------------Binomial testing----------------------------------------------------------------------------------------------
+  
+  binomial.test <- function(s1, sum, p = 0.5) {binom.test(s1, sum, p)$p.value}
+   
+  DF_umi_per_CB_s1_s2$p_val_binom <- mapply(binomial.test, DF_umi_per_CB_s1_s2$umi_per_CB_s1, DF_umi_per_CB_s1_s2$sum)
+
+  DF_umi_per_CB_s1_s2$p_val_binom2 <- dbinom(DF_umi_per_CB_s1_s2$umi_per_CB_s1, DF_umi_per_CB_s1_s2$sum, 0.5)
+  
+  return(DF_umi_per_CB_s1_s2)
+}
+
+#-----------------------------------------------------Function to plot UMI distribution between samples
+
+plot_distributions <- function(distributions_dataset){
   #Plot distribution with 0 and 1 values
-  dist_plot_with01 <- ggplot(DF_umi_per_CB_s1_s2) +
+  dist_plot <- ggplot(distributions_dataset) +
     geom_density(aes(x = dist_s1), fill = '#28B463', alpha = 0.7) +
     geom_density(aes(x = dist_s2), fill = '#FF7F50', alpha = 0.7) +
     labs(y = 'Counts', x = 'Distribution') +
@@ -166,33 +184,84 @@ sample_dist <- function(counts_path_s1, barcodes_path_s1, genes_path_s1,
     theme(axis.text=element_text(size=14),
           axis.title=element_text(size=16,face="bold"))
   
-  #Plot distribution without 0 and 1 values
-  dist_plot<- ggplot(DF_umi_per_CB_s1_s2[(DF_umi_per_CB_s1_s2$dist_s1 > 0) & (DF_umi_per_CB_s1_s2$dist_s2 > 0), ]) +
-    geom_density(aes(x = dist_s1), fill = '#28B463', alpha = 0.7) +
-    geom_density(aes(x = dist_s2), fill = '#FF7F50', alpha = 0.7) +
-    labs(y = 'Counts', x = 'Distribution') +
-    theme_linedraw() +
-    theme(axis.text=element_text(size=14),
-          axis.title=element_text(size=16,face="bold"))
+  #Create function to calculate number of UMI in sample1 for each step of distribution 
+  mean_median_max_umi_count_dist_s1 <- function(k){
+    mean <- mean(filter(distributions_dataset, dist_s1 == k)$umi_per_CB_s1)
+    median <- median(filter(distributions_dataset, dist_s1 == k)$umi_per_CB_s1)
+    max <- max(filter(distributions_dataset, dist_s1 == k)$umi_per_CB_s1)
+    return(c(mean, median, max))
+  }
+  
+  #Create function to calculate number of UMI in sample2 for each step of distribution 
+  mean_median_max_umi_count_dist_s2 <- function(k){
+    mean <- mean(filter(distributions_dataset, dist_s2 == k)$umi_per_CB_s2)
+    median <- median(filter(distributions_dataset, dist_s2 == k)$umi_per_CB_s2)
+    max <- max(filter(distributions_dataset, dist_s2 == k)$umi_per_CB_s2)
+    return(c(mean, median, max))
+  }
+  
+  #Initialize steps
+  k <- seq(0, 1, by = 0.05)
+  
+  #Implement above function and calculate number of UMI in sample1 
+  mean_median_max_umi_count_with_k_s1 <- as.data.frame(sapply(k, mean_median_max_umi_count_dist_s1))
+  colnames(mean_median_max_umi_count_with_k_s1) <- k
+  
+  #Create dataset for the plot
+  mean_median_max_umi_count_with_k_s1 <- mean_median_max_umi_count_with_k_s1 %>%
+    #select(where(~!any(is.na(.)))) %>%
+    mutate(Param = c('Mean', 'Median', 'Max')) %>%
+    tidyr::pivot_longer(!Param)
+  
+  #Plot with UMI counts sample 1 for each step of distribution
+  mean_max_umi_count_dist_plot_s1 <- ggplot(mean_median_max_umi_count_with_k_s1, aes(x = name, y = value, color = Param)) +
+    geom_point(alpha = 0.5) +
+    theme_bw() +
+    ylab('UMI count sample1') +
+    xlab('Distribution steps') +
+    theme(legend.position = "bottom",
+          axis.text.x = element_text(angle = 45, vjust = 0.5, hjust=0.5))
+  
+  #Implement above function and calculate number of UMI in sample2 
+  mean_median_max_umi_count_with_k_s2 <- as.data.frame(sapply(k, mean_median_max_umi_count_dist_s2))
+  colnames(mean_median_max_umi_count_with_k_s2) <- k
+  
+  #Create dataset for the plot
+  mean_median_max_umi_count_with_k_s2 <- mean_median_max_umi_count_with_k_s2 %>%
+    #select(where(~!any(is.na(.)))) %>%
+    mutate(Param = c('Mean', 'Median', 'Max')) %>%
+    tidyr::pivot_longer(!Param)
+  
+  #Plot with UMI counts sample2 for each step of distribution
+  mean_max_umi_count_dist_plot_s2 <- ggplot(mean_median_max_umi_count_with_k_s2, aes(x = name, y = value, color = Param)) +
+    geom_point(alpha = 0.5) +
+    theme_bw() +
+    ylab('UMI count sample2') +
+    xlab('Distribution steps') +
+    theme(legend.position = "bottom") +
+    theme(legend.position = "bottom",
+          axis.text.x = element_text(angle = 45, vjust = 0.5, hjust=0.5))
   
   #Combine plots
   final_plot <- grid.arrange(
-    dist_plot, 
-    dist_plot_with01,
+    mean_max_umi_count_dist_plot_s1,
+    mean_max_umi_count_dist_plot_s2,
+    dist_plot,
     nrow = 2,
-    ncol = 1,
+    ncol = 2,
     top = textGrob(file_name, gp=gpar(fontsize=18,font=8))
   )
-  
+
   return(final_plot)
 }
+
 
 #-----------------------------------------------------Solo1 gene raw data-------------------------------------------------------------------------------------------------------------------------
 
 
-counts_path_s1_g_raw = 'Data/Solo.out_1/Gene/raw/matrix.mtx.gz'
-barcodes_path_s1_g_raw = 'Data/Solo.out_1/Gene/raw/barcodes.tsv.gz'
-features_path_s1_g_raw = 'Data/Solo.out_1/Gene/raw/features.tsv.gz'
+counts_path_s1_g_raw = '../Data/Solo.out_1/Gene/raw/matrix.mtx.gz'
+barcodes_path_s1_g_raw = '../Data/Solo.out_1/Gene/raw/barcodes.tsv.gz'
+features_path_s1_g_raw = '../Data/Solo.out_1/Gene/raw/features.tsv.gz'
 file_name_s1_g_raw = 'Solo1_gene_raw'
 
 plot_s1_g_raw <- umi_gene_dist(counts_path = counts_path_s1_g_raw, barcodes_path = barcodes_path_s1_g_raw,
@@ -201,9 +270,9 @@ plot_s1_g_raw <- umi_gene_dist(counts_path = counts_path_s1_g_raw, barcodes_path
 #---------------------------------------------------- Solo1 gene filtered data-----------------------------------------------------------------------------------------------------------------
 
 
-counts_path_s1_g_filt = 'Data/Solo.out_1/Gene/filtered/matrix.mtx.gz'
-barcodes_path_s1_g_filt = 'Data/Solo.out_1/Gene/filtered/barcodes.tsv.gz'
-features_path_s1_g_filt = 'Data/Solo.out_1/Gene/filtered/features.tsv.gz'
+counts_path_s1_g_filt = '../Data/Solo.out_1/Gene/filtered/matrix.mtx.gz'
+barcodes_path_s1_g_filt = '../Data/Solo.out_1/Gene/filtered/barcodes.tsv.gz'
+features_path_s1_g_filt = '../Data/Solo.out_1/Gene/filtered/features.tsv.gz'
 file_name_s1_g_filt = 'Solo1_gene_filt'
 
 plot_s1_g_filt <- umi_gene_dist(counts_path = counts_path_s1_g_filt, barcodes_path = barcodes_path_s1_g_filt,
@@ -212,9 +281,9 @@ plot_s1_g_filt <- umi_gene_dist(counts_path = counts_path_s1_g_filt, barcodes_pa
 #-----------------------------------------------------Solo1 full gene raw data----------------------------------------------------------------------------------------------------------------------------
 
 
-counts_path_s1_fg_raw = 'Data/Solo.out_1/GeneFull/raw/matrix.mtx.gz'
-barcodes_path_s1_fg_raw = 'Data/Solo.out_1/GeneFull/raw/barcodes.tsv.gz'
-features_path_s1_fg_raw = 'Data/Solo.out_1/GeneFull/raw/features.tsv.gz'
+counts_path_s1_fg_raw = '../Data/Solo.out_1/GeneFull/raw/matrix.mtx.gz'
+barcodes_path_s1_fg_raw = '../Data/Solo.out_1/GeneFull/raw/barcodes.tsv.gz'
+features_path_s1_fg_raw = '../Data/Solo.out_1/GeneFull/raw/features.tsv.gz'
 file_name_s1_fg_raw = 'Solo1_geneFull_raw'
 
 plot_s1_fg_raw <- umi_gene_dist(counts_path = counts_path_s1_fg_raw, barcodes_path = barcodes_path_s1_fg_raw,
@@ -223,9 +292,9 @@ plot_s1_fg_raw <- umi_gene_dist(counts_path = counts_path_s1_fg_raw, barcodes_pa
 #-----------------------------------------------------Solo1 full gene filtered data---------------------------------------------------------------------------------------------------------------------------
 
 
-counts_path_s1_fg_filt = 'Data/Solo.out_1/GeneFull/filtered/matrix.mtx.gz'
-barcodes_path_s1_fg_filt = 'Data/Solo.out_1/GeneFull/filtered/barcodes.tsv.gz'
-features_path_s1_fg_filt = 'Data/Solo.out_1/GeneFull/filtered/features.tsv.gz'
+counts_path_s1_fg_filt = '../Data/Solo.out_1/GeneFull/filtered/matrix.mtx.gz'
+barcodes_path_s1_fg_filt = '../Data/Solo.out_1/GeneFull/filtered/barcodes.tsv.gz'
+features_path_s1_fg_filt = '../Data/Solo.out_1/GeneFull/filtered/features.tsv.gz'
 file_name_s1_fg_filt = 'Solo1_geneFull_filt'
 
 plot_s1_fg_filt <- umi_gene_dist(counts_path = counts_path_s1_fg_filt, barcodes_path = barcodes_path_s1_fg_filt,
@@ -244,9 +313,9 @@ solo1_out
 #-----------------------------------------------------Solo2 gene raw data-------------------------------------------------------------------------------------------------------------------------
 
 
-counts_path_s2_g_raw = 'Data/Solo.out_2/Gene/raw/matrix.mtx.gz'
-barcodes_path_s2_g_raw = 'Data/Solo.out_2/Gene/raw/barcodes.tsv.gz'
-features_path_s2_g_raw = 'Data/Solo.out_2/Gene/raw/features.tsv.gz'
+counts_path_s2_g_raw = '../Data/Solo.out_2/Gene/raw/matrix.mtx.gz'
+barcodes_path_s2_g_raw = '../Data/Solo.out_2/Gene/raw/barcodes.tsv.gz'
+features_path_s2_g_raw = '../Data/Solo.out_2/Gene/raw/features.tsv.gz'
 file_name_s2_g_raw = 'Solo2_gene_raw'
 
 plot_s2_g_raw <- umi_gene_dist(counts_path = counts_path_s2_g_raw, barcodes_path = barcodes_path_s2_g_raw,
@@ -255,9 +324,9 @@ plot_s2_g_raw <- umi_gene_dist(counts_path = counts_path_s2_g_raw, barcodes_path
 #---------------------------------------------------- Solo2 gene filtered data-----------------------------------------------------------------------------------------------------------------
 
 
-counts_path_s2_g_filt = 'Data/Solo.out_2/Gene/filtered/matrix.mtx.gz'
-barcodes_path_s2_g_filt = 'Data/Solo.out_2/Gene/filtered/barcodes.tsv.gz'
-features_path_s2_g_filt = 'Data/Solo.out_2/Gene/filtered/features.tsv.gz'
+counts_path_s2_g_filt = '../Data/Solo.out_2/Gene/filtered/matrix.mtx.gz'
+barcodes_path_s2_g_filt = '../Data/Solo.out_2/Gene/filtered/barcodes.tsv.gz'
+features_path_s2_g_filt = '../Data/Solo.out_2/Gene/filtered/features.tsv.gz'
 file_name_s2_g_filt = 'Solo2_gene_filt'
 
 plot_s2_g_filt <- umi_gene_dist(counts_path = counts_path_s2_g_filt, barcodes_path = barcodes_path_s2_g_filt,
@@ -266,9 +335,9 @@ plot_s2_g_filt <- umi_gene_dist(counts_path = counts_path_s2_g_filt, barcodes_pa
 #-----------------------------------------------------Solo2 full gene raw data----------------------------------------------------------------------------------------------------------------------------
 
 
-counts_path_s2_fg_raw = 'Data/Solo.out_2/GeneFull/raw/matrix.mtx.gz'
-barcodes_path_s2_fg_raw = 'Data/Solo.out_2/GeneFull/raw/barcodes.tsv.gz'
-features_path_s2_fg_raw = 'Data/Solo.out_2/GeneFull/raw/features.tsv.gz'
+counts_path_s2_fg_raw = '../Data/Solo.out_2/GeneFull/raw/matrix.mtx.gz'
+barcodes_path_s2_fg_raw = '../Data/Solo.out_2/GeneFull/raw/barcodes.tsv.gz'
+features_path_s2_fg_raw = '../Data/Solo.out_2/GeneFull/raw/features.tsv.gz'
 file_name_s2_fg_raw = 'Solo2_geneFull_raw'
 
 plot_s2_fg_raw <- umi_gene_dist(counts_path = counts_path_s2_fg_raw, barcodes_path = barcodes_path_s2_fg_raw,
@@ -277,9 +346,9 @@ plot_s2_fg_raw <- umi_gene_dist(counts_path = counts_path_s2_fg_raw, barcodes_pa
 #-----------------------------------------------------Solo2 full gene filtered data---------------------------------------------------------------------------------------------------------------------------
 
 
-counts_path_s2_fg_filt = 'Data/Solo.out_2/GeneFull/filtered/matrix.mtx.gz'
-barcodes_path_s2_fg_filt = 'Data/Solo.out_2/GeneFull/filtered/barcodes.tsv.gz'
-features_path_s2_fg_filt = 'Data/Solo.out_2/GeneFull/filtered/features.tsv.gz'
+counts_path_s2_fg_filt = '../Data/Solo.out_2/GeneFull/filtered/matrix.mtx.gz'
+barcodes_path_s2_fg_filt = '../Data/Solo.out_2/GeneFull/filtered/barcodes.tsv.gz'
+features_path_s2_fg_filt = '../Data/Solo.out_2/GeneFull/filtered/features.tsv.gz'
 file_name_s2_fg_filt = 'Solo2_geneFull_filt'
 
 plot_s2_fg_filt <- umi_gene_dist(counts_path = counts_path_s2_fg_filt, barcodes_path = barcodes_path_s2_fg_filt,
@@ -294,15 +363,15 @@ solo2_out <- grid.arrange(plot_s2_g_raw,
 
 solo2_out
 
-#-----------------------------------------------------Solo1 geneFull raw data-------------------------------------------------------------------------------------------------------------------------
+#-----------------------------------------------------geneFull raw data-------------------------------------------------------------------------------------------------------------------------
 
-counts_path_s1 <- ("Data/Solo.out_1/GeneFull/raw/matrix.mtx.gz")
-genes_path_s1 <- ("Data/Solo.out_1/GeneFull/raw/features.tsv.gz")
-barcodes_path_s1 <- ("Data/Solo.out_1/GeneFull/raw/barcodes.tsv.gz")
+counts_path_s1 <- ("../Data/Solo.out_1/GeneFull/raw/matrix.mtx.gz")
+genes_path_s1 <- ("../Data/Solo.out_1/GeneFull/raw/features.tsv.gz")
+barcodes_path_s1 <- ("../Data/Solo.out_1/GeneFull/raw/barcodes.tsv.gz")
 
-counts_path_s2 <- ("Data/Solo.out_2/GeneFull/raw/matrix.mtx.gz")
-genes_path_s2 <- ("Data/Solo.out_2/GeneFull/raw/features.tsv.gz")
-barcodes_path_s2 <- ("Data/Solo.out_2/GeneFull/raw/barcodes.tsv.gz")
+counts_path_s2 <- ("../Data/Solo.out_2/GeneFull/raw/matrix.mtx.gz")
+genes_path_s2 <- ("../Data/Solo.out_2/GeneFull/raw/features.tsv.gz")
+barcodes_path_s2 <- ("../Data/Solo.out_2/GeneFull/raw/barcodes.tsv.gz")
 
 file_name = 'Gene full Raw data'
 
@@ -310,16 +379,17 @@ genefull_rawdata <- sample_dist(counts_path_s1, barcodes_path_s1, genes_path_s1,
                                 counts_path_s2, barcodes_path_s2, genes_path_s2,
                                 file_name)
 
+genefull_rawdata_plots <- plot_distributions(genefull_rawdata) 
 
-#-----------------------------------------------------Solo1 geneFull filt data-------------------------------------------------------------------------------------------------------------------------
+#-----------------------------------------------------geneFull filt data-------------------------------------------------------------------------------------------------------------------------
 
-counts_path_s1 <- ("Data/Solo.out_1/GeneFull/filtered/matrix.mtx.gz")
-genes_path_s1 <- ("Data/Solo.out_1/GeneFull/filtered/features.tsv.gz")
-barcodes_path_s1 <- ("Data/Solo.out_1/GeneFull/filtered/barcodes.tsv.gz")
+counts_path_s1 <- ("../Data/Solo.out_1/GeneFull/filtered/matrix.mtx.gz")
+genes_path_s1 <- ("../Data/Solo.out_1/GeneFull/filtered/features.tsv.gz")
+barcodes_path_s1 <- ("../Data/Solo.out_1/GeneFull/filtered/barcodes.tsv.gz")
 
-counts_path_s2 <- ("Data/Solo.out_2/GeneFull/filtered/matrix.mtx.gz")
-genes_path_s2 <- ("Data/Solo.out_2/GeneFull/filtered/features.tsv.gz")
-barcodes_path_s2 <- ("Data/Solo.out_2/GeneFull/filtered/barcodes.tsv.gz")
+counts_path_s2 <- ("../Data/Solo.out_2/GeneFull/filtered/matrix.mtx.gz")
+genes_path_s2 <- ("../Data/Solo.out_2/GeneFull/filtered/features.tsv.gz")
+barcodes_path_s2 <- ("../Data/Solo.out_2/GeneFull/filtered/barcodes.tsv.gz")
 
 file_name = 'Gene full Filt data'
 
@@ -327,16 +397,17 @@ genefull_filtdata <- sample_dist(counts_path_s1, barcodes_path_s1, genes_path_s1
                                  counts_path_s2, barcodes_path_s2, genes_path_s2,
                                  file_name)
 
+genefull_filtdata_plots <- plot_distributions(genefull_filtdata) 
 
-#-----------------------------------------------------Solo1 gene raw data-------------------------------------------------------------------------------------------------------------------------
+#-----------------------------------------------------gene raw data-------------------------------------------------------------------------------------------------------------------------
 
-counts_path_s1 <- ("Data/Solo.out_1/Gene/raw/matrix.mtx.gz")
-genes_path_s1 <- ("Data/Solo.out_1/Gene/raw/features.tsv.gz")
-barcodes_path_s1 <- ("Data/Solo.out_1/Gene/raw/barcodes.tsv.gz")
+counts_path_s1 <- ("../Data/Solo.out_1/Gene/raw/matrix.mtx.gz")
+genes_path_s1 <- ("../Data/Solo.out_1/Gene/raw/features.tsv.gz")
+barcodes_path_s1 <- ("../Data/Solo.out_1/Gene/raw/barcodes.tsv.gz")
 
-counts_path_s2 <- ("Data/Solo.out_2/Gene/raw/matrix.mtx.gz")
-genes_path_s2 <- ("Data/Solo.out_2/Gene/raw/features.tsv.gz")
-barcodes_path_s2 <- ("Data/Solo.out_2/Gene/raw/barcodes.tsv.gz")
+counts_path_s2 <- ("../Data/Solo.out_2/Gene/raw/matrix.mtx.gz")
+genes_path_s2 <- ("../Data/Solo.out_2/Gene/raw/features.tsv.gz")
+barcodes_path_s2 <- ("../Data/Solo.out_2/Gene/raw/barcodes.tsv.gz")
 
 file_name = 'Gene Raw data'
 
@@ -344,16 +415,17 @@ gene_rawdata <- sample_dist(counts_path_s1, barcodes_path_s1, genes_path_s1,
                             counts_path_s2, barcodes_path_s2, genes_path_s2,
                             file_name)
 
+gene_rawdata_plots <- plot_distributions(gene_rawdata) 
 
-#-----------------------------------------------------Solo1 gene raw data-------------------------------------------------------------------------------------------------------------------------
+#-----------------------------------------------------gene filt data-------------------------------------------------------------------------------------------------------------------------
 
-counts_path_s1 <- ("Data/Solo.out_1/Gene/filtered/matrix.mtx.gz")
-genes_path_s1 <- ("Data/Solo.out_1/Gene/filtered/features.tsv.gz")
-barcodes_path_s1 <- ("Data/Solo.out_1/Gene/filtered/barcodes.tsv.gz")
+counts_path_s1 <- ("../Data/Solo.out_1/Gene/filtered/matrix.mtx.gz")
+genes_path_s1 <- ("../Data/Solo.out_1/Gene/filtered/features.tsv.gz")
+barcodes_path_s1 <- ("../Data/Solo.out_1/Gene/filtered/barcodes.tsv.gz")
 
-counts_path_s2 <- ("Data/Solo.out_2/Gene/filtered/matrix.mtx.gz")
-genes_path_s2 <- ("Data/Solo.out_2/Gene/filtered/features.tsv.gz")
-barcodes_path_s2 <- ("Data/Solo.out_2/Gene/filtered/barcodes.tsv.gz")
+counts_path_s2 <- ("../Data/Solo.out_2/Gene/filtered/matrix.mtx.gz")
+genes_path_s2 <- ("../Data/Solo.out_2/Gene/filtered/features.tsv.gz")
+barcodes_path_s2 <- ("../Data/Solo.out_2/Gene/filtered/barcodes.tsv.gz")
 
 file_name = 'Gene Filt data'
 
@@ -361,13 +433,15 @@ gene_filtdata <- sample_dist(counts_path_s1, barcodes_path_s1, genes_path_s1,
                              counts_path_s2, barcodes_path_s2, genes_path_s2,
                              file_name)
 
+gene_filtdata_plots <- plot_distributions(gene_filtdata) 
 
 combined_plot <- grid.arrange(
-  gene_rawdata,
-  gene_filtdata,
-  genefull_rawdata,
-  genefull_filtdata,
+  genefull_rawdata_plots,
+  genefull_filtdata_plots,
+  gene_rowdata_plots,
+  gene_filtdata_plots,
   nrow = 2,
   ncol = 2
 )
+
 
