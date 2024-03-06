@@ -3,24 +3,38 @@ library(glue)
 # setwd(dirname(rstudioapi::getActiveDocumentContext()$path))
 
 
-## Фильтрование баркодов из сырой матрицы при помощи EmptyDrops
+## Функции для фильтрование баркодов из сырой матрицы при помощи EmptyDrops
 filter_barcodes_with_emptyDrops <- function(sparse_matrix, lower = 100, test.ambient = TRUE) {
   emptyDrops_df = emptyDrops(sparse_matrix, lower = lower, test.ambient = test.ambient)
   emptyDrops_df$FDR[is.na(emptyDrops_df$FDR)] <- 1 # выставляю всем NA FDR единичку
   return(emptyDrops_df)
 }
 
-return_filtered_barcodes_indeces <- function(emptyDrops_df, fdr_threshold = 0.05) {
+return_filtered_barcodes_or_indeces <- function(emptyDrops_df, fdr_threshold = 0.05, return_indeces = FALSE) {
   filtered_barcodes_indeces <- which(emptyDrops_df$FDR < fdr_threshold) #список со всеми отфильтр. баркодами
-  return(filtered_barcodes_indeces)
+  
+  if (return_indeces) {
+    return(filtered_barcodes_indeces)
+  }
+  return(rownames(emptyDrops_df)[filtered_barcodes_indeces])
 }
+
 #Пример фильтрации
-matrix_1_raw <- readMM('../../data/Species_mixing/Solo.out_1/GeneFull/raw/matrix.mtx')
+
+#Чтение данных
+path_to_matrix <- '../../data/Species_mixing/Solo.out_1/GeneFull/raw/matrix.mtx'
+path_to_barcodes <- '../../data/Species_mixing/Solo.out_1/GeneFull/raw/barcodes.tsv'
+matrix_1_raw <- readMM(path_to_matrix)
+cell_ids <- readr::read_tsv(path_to_barcodes, col_names = FALSE)$X1
+colnames(matrix_1_raw) <- cell_ids
+
+#Запуск emptyDrops
 emptyDrops_df <- filter_barcodes_with_emptyDrops(matrix_1_raw)
 
 
-filtered_barcodes_indeces <- return_filtered_barcodes_indeces(emptyDrops_df, fdr_threshold = 0.05) #список со всеми отфильтр. баркодами
-
+#Вывод баркодов/индексов в отдельные списки
+filtered_barcodes <- return_filtered_barcodes_or_indeces(emptyDrops_df, fdr_threshold = 0.05) #список со всеми отфильтр. баркодами
+filtered_barcodes_indeces <- return_filtered_barcodes_or_indeces(emptyDrops_df, fdr_threshold = 0.05, return_indeces = TRUE) #список со всеми индексами отфильтр. баркодов
 
 
 
