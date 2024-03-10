@@ -6,6 +6,7 @@ library(gridExtra)
 source('EmptyDrops_filtering.R')
 
 #-----------------------------------------------------Function to calculate basic metrics
+
 umi_gene_dist <- function(counts_path, barcodes_path, genes_path, file_name,
                           emptydrops_run = FALSE, lower = 100, 
                           test.ambient = TRUE, fdr_threshold = 0.05, 
@@ -99,7 +100,7 @@ umi_gene_dist <- function(counts_path, barcodes_path, genes_path, file_name,
   #Create knee plot
   knee_plot <- ggplot(umi_per_CB_sorted, aes(x = c(1:length(umi_per_CB_sorted$UMIcount)), y = UMIcount)) +
     geom_line(color = 'darkgreen', size = 1) +
-    labs(y = 'UMI count, log10', x = 'cell barcodes, log10') +
+    labs(y = 'UMI count, log10', x = 'Cell barcodes, ranked') +
     theme_linedraw() +
     theme(axis.text=element_text(size=14),
           axis.title=element_text(size=16,face="bold")) +
@@ -220,6 +221,7 @@ sample_dist <- function(counts_path_s1, barcodes_path_s1, genes_path_s1,
   return(DF_umi_per_CB_s1_s2)
 }
 
+
 #-----------------------------------------------------Function to plot UMI distribution between samples
 
 plot_distributions <- function(distributions_dataset){
@@ -302,197 +304,3 @@ plot_distributions <- function(distributions_dataset){
 
   return(final_plot)
 }
-
-
-#-----------------------------------------------------Solo1 gene raw data-------------------------------------------------------------------------------------------------------------------------
-
-
-counts_path_s1_g_raw = '../Data/Solo.out_1/Gene/raw/matrix.mtx.gz'
-barcodes_path_s1_g_raw = '../Data/Solo.out_1/Gene/raw/barcodes.tsv.gz'
-features_path_s1_g_raw = '../Data/Solo.out_1/Gene/raw/features.tsv.gz'
-file_name_s1_g_raw = 'Solo1_gene_raw'
-
-plot_s1_g_raw <- umi_gene_dist(counts_path = counts_path_s1_g_raw, barcodes_path = barcodes_path_s1_g_raw,
-                               genes_path = features_path_s1_g_raw, file_name = file_name_s1_g_raw, 
-                               emptydrops_run = TRUE, fdr_threshold = 0.01)
-
-#---------------------------------------------------- Solo1 gene filtered data-----------------------------------------------------------------------------------------------------------------
-
-
-counts_path_s1_g_filt = '../Data/Solo.out_1/Gene/filtered/matrix.mtx.gz'
-barcodes_path_s1_g_filt = '../Data/Solo.out_1/Gene/filtered/barcodes.tsv.gz'
-features_path_s1_g_filt = '../Data/Solo.out_1/Gene/filtered/features.tsv.gz'
-file_name_s1_g_filt = 'Solo1_gene_filt'
-
-plot_s1_g_filt <- umi_gene_dist(counts_path = counts_path_s1_g_filt, barcodes_path = barcodes_path_s1_g_filt,
-                               genes_path = features_path_s1_g_filt, file_name = file_name_s1_g_filt)
-
-#-----------------------------------------------------Solo1 full gene raw data----------------------------------------------------------------------------------------------------------------------------
-
-
-counts_path_s1_fg_raw = '../Data/Solo.out_1/GeneFull/raw/matrix.mtx.gz'
-barcodes_path_s1_fg_raw = '../Data/Solo.out_1/GeneFull/raw/barcodes.tsv.gz'
-features_path_s1_fg_raw = '../Data/Solo.out_1/GeneFull/raw/features.tsv.gz'
-file_name_s1_fg_raw = 'Solo1_geneFull_raw'
-
-plot_s1_fg_raw <- umi_gene_dist(counts_path = counts_path_s1_fg_raw, barcodes_path = barcodes_path_s1_fg_raw,
-              genes_path = features_path_s1_fg_raw, file_name = file_name_s1_fg_raw)
-
-#-----------------------------------------------------Solo1 full gene filtered data---------------------------------------------------------------------------------------------------------------------------
-
-
-counts_path_s1_fg_filt = '../Data/Solo.out_1/GeneFull/filtered/matrix.mtx.gz'
-barcodes_path_s1_fg_filt = '../Data/Solo.out_1/GeneFull/filtered/barcodes.tsv.gz'
-features_path_s1_fg_filt = '../Data/Solo.out_1/GeneFull/filtered/features.tsv.gz'
-file_name_s1_fg_filt = 'Solo1_geneFull_filt'
-
-plot_s1_fg_filt <- umi_gene_dist(counts_path = counts_path_s1_fg_filt, barcodes_path = barcodes_path_s1_fg_filt,
-                                genes_path = features_path_s1_fg_filt, file_name = file_name_s1_fg_filt)
-
-
-solo1_out <- grid.arrange(plot_s1_g_raw, 
-                          plot_s1_g_filt,
-                          plot_s1_fg_raw,
-                          plot_s1_fg_filt)
-
-
-solo1_out
-
-
-#-----------------------------------------------------Solo2 gene raw data-------------------------------------------------------------------------------------------------------------------------
-
-
-counts_path_s2_g_raw = '../Data/Solo.out_2/Gene/raw/matrix.mtx.gz'
-barcodes_path_s2_g_raw = '../Data/Solo.out_2/Gene/raw/barcodes.tsv.gz'
-features_path_s2_g_raw = '../Data/Solo.out_2/Gene/raw/features.tsv.gz'
-file_name_s2_g_raw = 'Solo2_gene_raw'
-
-plot_s2_g_raw <- umi_gene_dist(counts_path = counts_path_s2_g_raw, barcodes_path = barcodes_path_s2_g_raw,
-                               genes_path = features_path_s2_g_raw, file_name = file_name_s2_g_raw)
-
-#---------------------------------------------------- Solo2 gene filtered data-----------------------------------------------------------------------------------------------------------------
-
-
-counts_path_s2_g_filt = '../Data/Solo.out_2/Gene/filtered/matrix.mtx.gz'
-barcodes_path_s2_g_filt = '../Data/Solo.out_2/Gene/filtered/barcodes.tsv.gz'
-features_path_s2_g_filt = '../Data/Solo.out_2/Gene/filtered/features.tsv.gz'
-file_name_s2_g_filt = 'Solo2_gene_filt'
-
-plot_s2_g_filt <- umi_gene_dist(counts_path = counts_path_s2_g_filt, barcodes_path = barcodes_path_s2_g_filt,
-                                genes_path = features_path_s2_g_filt, file_name = file_name_s2_g_filt)
-
-#-----------------------------------------------------Solo2 full gene raw data----------------------------------------------------------------------------------------------------------------------------
-
-
-counts_path_s2_fg_raw = '../Data/Solo.out_2/GeneFull/raw/matrix.mtx.gz'
-barcodes_path_s2_fg_raw = '../Data/Solo.out_2/GeneFull/raw/barcodes.tsv.gz'
-features_path_s2_fg_raw = '../Data/Solo.out_2/GeneFull/raw/features.tsv.gz'
-file_name_s2_fg_raw = 'Solo2_geneFull_raw'
-
-plot_s2_fg_raw <- umi_gene_dist(counts_path = counts_path_s2_fg_raw, barcodes_path = barcodes_path_s2_fg_raw,
-                                genes_path = features_path_s2_fg_raw, file_name = file_name_s2_fg_raw)
-
-#-----------------------------------------------------Solo2 full gene filtered data---------------------------------------------------------------------------------------------------------------------------
-
-
-counts_path_s2_fg_filt = '../Data/Solo.out_2/GeneFull/filtered/matrix.mtx.gz'
-barcodes_path_s2_fg_filt = '../Data/Solo.out_2/GeneFull/filtered/barcodes.tsv.gz'
-features_path_s2_fg_filt = '../Data/Solo.out_2/GeneFull/filtered/features.tsv.gz'
-file_name_s2_fg_filt = 'Solo2_geneFull_filt'
-
-plot_s2_fg_filt <- umi_gene_dist(counts_path = counts_path_s2_fg_filt, barcodes_path = barcodes_path_s2_fg_filt,
-                                 genes_path = features_path_s2_fg_filt, file_name = file_name_s2_fg_filt)
-
-
-solo2_out <- grid.arrange(plot_s2_g_raw, 
-                          plot_s2_g_filt,
-                          plot_s2_fg_raw,
-                          plot_s2_fg_filt)
-
-
-solo2_out
-
-#-----------------------------------------------------geneFull raw data-------------------------------------------------------------------------------------------------------------------------
-
-counts_path_s1 <- ("../Data/Solo.out_1/GeneFull/raw/matrix.mtx.gz")
-genes_path_s1 <- ("../Data/Solo.out_1/GeneFull/raw/features.tsv.gz")
-barcodes_path_s1 <- ("../Data/Solo.out_1/GeneFull/raw/barcodes.tsv.gz")
-
-counts_path_s2 <- ("../Data/Solo.out_2/GeneFull/raw/matrix.mtx.gz")
-genes_path_s2 <- ("../Data/Solo.out_2/GeneFull/raw/features.tsv.gz")
-barcodes_path_s2 <- ("../Data/Solo.out_2/GeneFull/raw/barcodes.tsv.gz")
-
-file_name = 'Gene full Raw data'
-
-genefull_rawdata <- sample_dist(counts_path_s1, barcodes_path_s1, genes_path_s1, 
-                                counts_path_s2, barcodes_path_s2, genes_path_s2,
-                                file_name, emptydrops_run = TRUE, fdr_threshold = 0.01)
-
-genefull_rawdata_plots <- plot_distributions(genefull_rawdata) 
-
-#-----------------------------------------------------geneFull filt data-------------------------------------------------------------------------------------------------------------------------
-
-counts_path_s1 <- ("../Data/Solo.out_1/GeneFull/filtered/matrix.mtx.gz")
-genes_path_s1 <- ("../Data/Solo.out_1/GeneFull/filtered/features.tsv.gz")
-barcodes_path_s1 <- ("../Data/Solo.out_1/GeneFull/filtered/barcodes.tsv.gz")
-
-counts_path_s2 <- ("../Data/Solo.out_2/GeneFull/filtered/matrix.mtx.gz")
-genes_path_s2 <- ("../Data/Solo.out_2/GeneFull/filtered/features.tsv.gz")
-barcodes_path_s2 <- ("../Data/Solo.out_2/GeneFull/filtered/barcodes.tsv.gz")
-
-file_name = 'Gene full Filt data'
-
-genefull_filtdata <- sample_dist(counts_path_s1, barcodes_path_s1, genes_path_s1, 
-                                 counts_path_s2, barcodes_path_s2, genes_path_s2,
-                                 file_name)
-
-genefull_filtdata_plots <- plot_distributions(genefull_filtdata) 
-
-#-----------------------------------------------------gene raw data-------------------------------------------------------------------------------------------------------------------------
-
-counts_path_s1 <- ("../Data/Solo.out_1/Gene/raw/matrix.mtx.gz")
-genes_path_s1 <- ("../Data/Solo.out_1/Gene/raw/features.tsv.gz")
-barcodes_path_s1 <- ("../Data/Solo.out_1/Gene/raw/barcodes.tsv.gz")
-
-counts_path_s2 <- ("../Data/Solo.out_2/Gene/raw/matrix.mtx.gz")
-genes_path_s2 <- ("../Data/Solo.out_2/Gene/raw/features.tsv.gz")
-barcodes_path_s2 <- ("../Data/Solo.out_2/Gene/raw/barcodes.tsv.gz")
-
-file_name = 'Gene Raw data'
-
-gene_rawdata <- sample_dist(counts_path_s1, barcodes_path_s1, genes_path_s1, 
-                            counts_path_s2, barcodes_path_s2, genes_path_s2,
-                            file_name)
-
-gene_rawdata_plots <- plot_distributions(gene_rawdata) 
-
-#-----------------------------------------------------gene filt data-------------------------------------------------------------------------------------------------------------------------
-
-counts_path_s1 <- ("../Data/Solo.out_1/Gene/filtered/matrix.mtx.gz")
-genes_path_s1 <- ("../Data/Solo.out_1/Gene/filtered/features.tsv.gz")
-barcodes_path_s1 <- ("../Data/Solo.out_1/Gene/filtered/barcodes.tsv.gz")
-
-counts_path_s2 <- ("../Data/Solo.out_2/Gene/filtered/matrix.mtx.gz")
-genes_path_s2 <- ("../Data/Solo.out_2/Gene/filtered/features.tsv.gz")
-barcodes_path_s2 <- ("../Data/Solo.out_2/Gene/filtered/barcodes.tsv.gz")
-
-file_name = 'Gene Filt data'
-
-gene_filtdata <- sample_dist(counts_path_s1, barcodes_path_s1, genes_path_s1, 
-                             counts_path_s2, barcodes_path_s2, genes_path_s2,
-                             file_name)
-
-gene_filtdata_plots <- plot_distributions(gene_filtdata) 
-
-combined_plot <- grid.arrange(
-  genefull_rawdata_plots,
-  genefull_filtdata_plots,
-  gene_rowdata_plots,
-  gene_filtdata_plots,
-  nrow = 2,
-  ncol = 2
-)
-
-
-
-
