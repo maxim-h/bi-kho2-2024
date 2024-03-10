@@ -24,11 +24,11 @@ barcodes_path_s2 <- 'PATH_TO_GENES_S2'
 
 file_name = 'FILENAME'
 
-genefull_rawdata <- sample_dist(counts_path_s1, barcodes_path_s1, genes_path_s1, 
+sample_distribution_dataset <- sample_dist(counts_path_s1, barcodes_path_s1, genes_path_s1, 
                                 counts_path_s2, barcodes_path_s2, genes_path_s2,
                                 file_name, emptydrops_run = TRUE, fdr_threshold = 0.01)
 
-genefull_rawdata_plots <- plot_distributions(genefull_rawdata) 
+sample_distribution_plot <- plot_distributions(sample_distribution_dataset) 
 
 
 
