@@ -3,9 +3,13 @@ library(ggplot2)
 library(ggpubr)
 library(grid)
 library(gridExtra)
+source('EmptyDrops_filtering.R')
 
 #-----------------------------------------------------Function to calculate basic metrics
-umi_gene_dist <- function(counts_path, barcodes_path, genes_path, file_name){
+umi_gene_dist <- function(counts_path, barcodes_path, genes_path, file_name,
+                          emptydrops_run = FALSE, lower = 100, 
+                          test.ambient = TRUE, fdr_threshold = 0.05, 
+                          return_indices = FALSE){
   
   #Read files
   counts <- Matrix::readMM(counts_path)
@@ -16,15 +20,32 @@ umi_gene_dist <- function(counts_path, barcodes_path, genes_path, file_name){
   #Assign row and colnames
   rownames(counts) <- gene_ids
   colnames(counts) <- cell_ids
-  
+
   #Calculate UMI per cell barcode distribution
-  umi_per_CB <- Matrix::colSums(counts)[Matrix::colSums(counts) > 0]
+  umi_per_CB <- as.data.frame(Matrix::colSums(counts)[Matrix::colSums(counts) > 0])
+  colnames(umi_per_CB) <- c('UMIcount')
   
   #Calculate gene per cell barcode distribution
-  gene_per_CB <- Matrix::colSums(counts > 0)[Matrix::colSums(counts) > 0]
+  gene_per_CB <- as.data.frame(Matrix::colSums(counts > 0)[Matrix::colSums(counts) > 0])
+  colnames(gene_per_CB) <- c('Genecount')
+  
+  #Run emptydrops IF needed
+  if (emptydrops_run == TRUE) {
+    
+    #Data filtering with empty drops
+    filtered_counts <- filter_barcodes_with_emptyDrops(matrix = counts, lower = lower, test.ambient = test.ambient)
+    
+    #Filtered barcodes
+    filtered_barcodes_list <- return_filtered_barcodes_or_indices(filtered_counts, fdr_threshold = fdr_threshold, 
+                                                                     return_indices = return_indices)
+    
+    umi_per_CB <- filter(umi_per_CB, rownames(umi_per_CB) %in% filtered_barcodes_list)
+    gene_per_CB <- filter(gene_per_CB, rownames(gene_per_CB) %in% filtered_barcodes_list)
+  }
+
   
   #Create plot for UMI per cell barcode distribution
-  umi_per_CB_plot <- ggplot(as.data.frame(umi_per_CB), aes(x = log10(umi_per_CB))) +
+  umi_per_CB_plot <- ggplot(umi_per_CB, aes(x = log10(UMIcount))) +
     geom_histogram(bins=15, fill = 'orange', col = 'darkgreen') +
     labs(y = 'Frequency', x = 'UMI count, log10') +
     theme_linedraw() +
@@ -32,7 +53,7 @@ umi_gene_dist <- function(counts_path, barcodes_path, genes_path, file_name){
           axis.title=element_text(size=16,face="bold"))
   
   #Create plot for gene per cell barcode distribution
-  gene_per_CB_plot <- ggplot(as.data.frame(gene_per_CB), aes(x = log10(gene_per_CB))) +
+  gene_per_CB_plot <- ggplot(gene_per_CB, aes(x = log10(Genecount))) +
     geom_histogram(bins=15, fill = 'darkgreen', col = 'orange') +
     labs(y = 'Frequency', x = 'gene count, log10') +
     theme_linedraw() +
@@ -43,7 +64,7 @@ umi_gene_dist <- function(counts_path, barcodes_path, genes_path, file_name){
   umi_gene_data <- data.frame(umi_per_CB, gene_per_CB)
   
   #Create scatterplot for UMI per CB ~ gene per CB
-  gene_umi <- ggplot(umi_gene_data, aes(x = gene_per_CB, y = umi_per_CB)) +
+  gene_umi <- ggplot(umi_gene_data, aes(x = Genecount, y = UMIcount)) +
     geom_point(color = 'darkgreen') +
     labs(y = 'UMI count', x = 'gene count') +
     theme_linedraw() +
@@ -72,12 +93,11 @@ umi_gene_dist <- function(counts_path, barcodes_path, genes_path, file_name){
     theme_void()
   
   #Create sorted UMI_count DF
-  DF_umi_per_CB <- as.data.frame(umi_per_CB) %>%
-    arrange(desc(umi_per_CB)) %>%
-    mutate(cb = as.numeric(rownames(as.data.frame(umi_per_CB))))
+  umi_per_CB_sorted <- umi_per_CB %>%
+    arrange(desc(umi_per_CB))
   
   #Create knee plot
-  knee_plot <- ggplot(DF_umi_per_CB, aes(x = cb, y = umi_per_CB)) +
+  knee_plot <- ggplot(umi_per_CB_sorted, aes(x = c(1:length(umi_per_CB_sorted$UMIcount)), y = UMIcount)) +
     geom_line(color = 'darkgreen', size = 1) +
     labs(y = 'UMI count, log10', x = 'cell barcodes, log10') +
     theme_linedraw() +
@@ -106,7 +126,9 @@ umi_gene_dist <- function(counts_path, barcodes_path, genes_path, file_name){
 
 sample_dist <- function(counts_path_s1, barcodes_path_s1, genes_path_s1, 
                         counts_path_s2, barcodes_path_s2, genes_path_s2,
-                        file_name){
+                        file_name, emptydrops_run = FALSE, lower = 100, 
+                        test.ambient = TRUE, fdr_threshold = 0.05, 
+                        return_indices = FALSE){
   
   #----------------------------------------Import Solo1-----------------------------------------------------------------------------------------------
   
@@ -126,6 +148,19 @@ sample_dist <- function(counts_path_s1, barcodes_path_s1, genes_path_s1,
   #Convert to DF
   DF_umi_per_CB_s1 <- as.data.frame(umi_per_CB_s1_mtx)
   
+  #Run emptydrops IF needed
+  if (emptydrops_run == TRUE) {
+    
+    #Data filtering with empty drops
+    filtered_counts_s1 <- filter_barcodes_with_emptyDrops(matrix = counts_s1, lower = lower, test.ambient = test.ambient)
+    
+    #Filtered barcodes
+    filtered_barcodes_list_s1 <- return_filtered_barcodes_or_indices(filtered_counts_s1, fdr_threshold = fdr_threshold, 
+                                                                  return_indices = return_indices)
+    
+    DF_umi_per_CB_s1 <- filter(DF_umi_per_CB_s1, rownames(DF_umi_per_CB_s1) %in% filtered_barcodes_list_s1)
+  }
+  
   #----------------------------------------Import Solo2-----------------------------------------------------------------------------------------------
   
   #Read files
@@ -143,6 +178,19 @@ sample_dist <- function(counts_path_s1, barcodes_path_s1, genes_path_s1,
   
   #Convert to DF
   DF_umi_per_CB_s2 <- as.data.frame(umi_per_CB_s2_mtx)
+  
+  #Run emptydrops IF needed
+  if (emptydrops_run == TRUE) {
+    
+    #Data filtering with empty drops
+    filtered_counts_s2 <- filter_barcodes_with_emptyDrops(matrix = counts_s2, lower = lower, test.ambient = test.ambient)
+    
+    #Filtered barcodes
+    filtered_barcodes_list_s2 <- return_filtered_barcodes_or_indices(filtered_counts_s2, fdr_threshold = fdr_threshold, 
+                                                                  return_indices = return_indices)
+    
+    DF_umi_per_CB_s2 <- filter(DF_umi_per_CB_s2, rownames(DF_umi_per_CB_s2) %in% filtered_barcodes_list_s2)
+  }
   
   #----------------------------------------Calculate distributions----------------------------------------------------------------------------------------------
   
@@ -265,7 +313,8 @@ features_path_s1_g_raw = '../Data/Solo.out_1/Gene/raw/features.tsv.gz'
 file_name_s1_g_raw = 'Solo1_gene_raw'
 
 plot_s1_g_raw <- umi_gene_dist(counts_path = counts_path_s1_g_raw, barcodes_path = barcodes_path_s1_g_raw,
-                                genes_path = features_path_s1_g_raw, file_name = file_name_s1_g_raw)
+                               genes_path = features_path_s1_g_raw, file_name = file_name_s1_g_raw, 
+                               emptydrops_run = TRUE, fdr_threshold = 0.01)
 
 #---------------------------------------------------- Solo1 gene filtered data-----------------------------------------------------------------------------------------------------------------
 
@@ -377,7 +426,7 @@ file_name = 'Gene full Raw data'
 
 genefull_rawdata <- sample_dist(counts_path_s1, barcodes_path_s1, genes_path_s1, 
                                 counts_path_s2, barcodes_path_s2, genes_path_s2,
-                                file_name)
+                                file_name, emptydrops_run = TRUE, fdr_threshold = 0.01)
 
 genefull_rawdata_plots <- plot_distributions(genefull_rawdata) 
 
@@ -443,5 +492,7 @@ combined_plot <- grid.arrange(
   nrow = 2,
   ncol = 2
 )
+
+
 
 
