@@ -213,10 +213,18 @@ sample_dist <- function(counts_path_s1, barcodes_path_s1, genes_path_s1,
   #----------------------------------------Binomial testing----------------------------------------------------------------------------------------------
   
   binomial.test <- function(s1, sum, p = 0.5) {binom.test(s1, sum, p)$p.value}
-   
+  
+  # Binomial test with custom function
   DF_umi_per_CB_s1_s2$p_val_binom <- mapply(binomial.test, DF_umi_per_CB_s1_s2$umi_per_CB_s1, DF_umi_per_CB_s1_s2$sum)
-
+  
+  # P-value adjustment for custom binomial test
+  DF_umi_per_CB_s1_s2$p_val_adj_binom <- p.adjust(DF_umi_per_CB_s1_s2$p_val_binom, method='BH', n = length(DF_umi_per_CB_s1_s2$p_val_binom))
+  
+  # Binomial test with dbinom
   DF_umi_per_CB_s1_s2$p_val_binom2 <- dbinom(DF_umi_per_CB_s1_s2$umi_per_CB_s1, DF_umi_per_CB_s1_s2$sum, 0.5)
+  
+  # P-value adjustment for binomial test with dbinom
+  DF_umi_per_CB_s1_s2$p_val_adj_binom2 <- p.adjust(DF_umi_per_CB_s1_s2$p_val_binom2, method='BH', n = length(DF_umi_per_CB_s1_s2$p_val_binom2))
   
   return(DF_umi_per_CB_s1_s2)
 }
