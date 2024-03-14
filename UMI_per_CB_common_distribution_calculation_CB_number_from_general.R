@@ -5,6 +5,8 @@ library(grid)
 library(gridExtra)
 library(viridis)
 library(RColorBrewer)
+#функция возвращает DF, полученный из отсортированного по  количеству UMI в двух(!) образцах DF,
+# из которого были выбраны только СВ, встречающиеся в двух образцах
 
 UMI_per_CB_sample_dist <- function(counts_path_s1, barcodes_path_s1, genes_path_s1, counts_path_s2, barcodes_path_s2, genes_path_s2){
 
@@ -67,9 +69,11 @@ UMI_per_CB_sample_dist <- function(counts_path_s1, barcodes_path_s1, genes_path_
   
   #DF_for_knee_s1 <-subset(DF_umi_per_CB_s1_s2_sort, dist_s1 > 0)
   #DF_for_knee_s2 <-subset(DF_umi_per_CB_s1_s2_sort, dist_s2 > 0)
+  
   DF_all <- DF_umi_per_CB_s1_s2_sort %>%
     mutate(dist_s1 = round(umi_per_CB.x/(umi_per_CB.x + umi_per_CB.y),3)) %>%
-    mutate(dist_s2 = round(umi_per_CB.y/(umi_per_CB.x + umi_per_CB.y),3))
+    mutate(dist_s2 = round(umi_per_CB.y/(umi_per_CB.x + umi_per_CB.y),3))%>%
+    mutate(umi_per_CB_total = umi_per_CB.y + umi_per_CB.x)
   DF_all_sorted <- as.data.frame(DF_all) %>%
     arrange(desc(DF_all$umi_per_CB_total))
   DF_all_sorted <- as.data.frame(DF_all_sorted) %>%
