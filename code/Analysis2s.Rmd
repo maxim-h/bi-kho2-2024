@@ -1,0 +1,352 @@
+---
+title: "Analysis"
+author: "Shakir Suleimanov"
+date: "2024-03-26"
+output: 
+  html_document:
+    #css: styles.css
+    latex_engine : xelatex
+    df_print: default
+    highlight: zenburn
+    toc: TRUE
+    toc_depth: 4
+mainfont : NanumGothic    
+editor_options: 
+  markdown: 
+    wrap: 72
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+### Libs
+```{r message=FALSE, warning=FALSE, include=FALSE}
+source('Basic_metrics.R')
+```
+
+
+### Datapaths
+```{r no filtering, echo=TRUE, message=FALSE, warning=FALSE}
+counts <- c('../Data/Solo.out_1/Gene/raw/matrix.mtx.gz',
+            '../Data/Solo.out_2/Gene/raw/matrix.mtx.gz')
+
+genes <- c('../Data/Solo.out_1/Gene/raw/features.tsv.gz',
+           '../Data/Solo.out_2/Gene/raw/features.tsv.gz')
+
+barcodes <- c('../Data/Solo.out_1/Gene/raw/barcodes.tsv.gz',
+              '../Data/Solo.out_2/Gene/raw/barcodes.tsv.gz')
+
+filenames <- c('Solo1', 'Solo2')
+```
+
+### Two samples - no filtering
+```{r no filtering, echo=TRUE, message=FALSE, warning=FALSE}
+experiments_nf <- read_10X_samples(counts, barcodes, genes, 
+                                filenames, emptydrops_run = FALSE, fdr_threshold = 0.05)
+
+experiments_nf <- calculate_distributions(experiments_nf, 2)
+
+experiments_nf <- multinomial_testing(experiments_nf, 2)
+
+pvals <- experiments_nf$non_filt_pvals
+```
+
+
+### Two samples - filtering
+```{r filtering, echo=TRUE, message=FALSE, warning=FALSE}
+experiments_f1 <- read_10X_samples(counts, barcodes, genes, 
+                                filenames, emptydrops_run = TRUE, fdr_threshold = 0.05)
+
+experiments_f1 <- calculate_distributions(experiments_f1, 2)
+
+experiments_f1 <- multinomial_testing(experiments_f1, 2)
+
+kp1sample_f1 <- knee_plot_sample_distribution(experiments_f1$counts, 1, 0.05)
+kp2sample_f1 <- knee_plot_sample_distribution(experiments_f1$counts, 2, 0.05)
+```
+
+
+### Two samples - filtering
+```{r filtering, echo=TRUE, message=FALSE, warning=FALSE}
+experiments_f2 <- read_10X_samples(counts, barcodes, genes, 
+                                filenames, emptydrops_run = TRUE, fdr_threshold = 0.05)
+
+experiments_f2 <- calculate_distributions(experiments_f2, 2)
+
+experiments_f2 <- assign_non_filt_pvals(experiments_f1, pvals)
+
+#kp1sample_f2 <- knee_plot_sample_distribution(experiments_f2$counts, 1, 0.05)
+#kp2sample_f2 <- knee_plot_sample_distribution(experiments_f2$counts, 2, 0.05)
+
+```
+
+
+```{r}
+#sample_distribution_plot <- plot_distributions(sample_distribution_dataset) 
+
+plot_distributions_boxplots(experiments$distributions, 2, alpha=0.1)
+
+plot_intersections(experiments$counts)
+
+plot_distributions_density(experiments$distributions)
+
+kp1sample <- knee_plot_sample_distribution(experiments$counts, 1, 0.05)
+kp2sample <- knee_plot_sample_distribution(experiments$counts, 2, 0.05)
+
+grid.arrange(
+    kp1sample, 
+    kp2sample,
+    nrow = 1,
+    ncol = 2,
+    top = textGrob('p-val threshold - 0.05', gp=gpar(fontsize=18,font=8))
+  )
+```
+
+
+```{r echo=TRUE}
+kp1sample <- knee_plot_sample_distribution(sample_distribution_dataset[[2]], 1, 0.01)
+kp2sample <- knee_plot_sample_distribution(sample_distribution_dataset[[2]], 2, 0.01)
+
+grid.arrange(
+    kp1sample, 
+    kp2sample,
+    nrow = 1,
+    ncol = 2,
+    top = textGrob('p-val threshold - 0.01', gp=gpar(fontsize=18,font=8))
+  )
+```
+
+
+```{r echo=TRUE}
+kp1sample <- knee_plot_sample_distribution(sample_distribution_dataset[[2]], 1, 0.001)
+kp2sample <- knee_plot_sample_distribution(sample_distribution_dataset[[2]], 2, 0.001)
+
+grid.arrange(
+    kp1sample, 
+    kp2sample,
+    nrow = 1,
+    ncol = 2,
+    top = textGrob('p-val threshold - 0.001', gp=gpar(fontsize=18,font=8))
+  )
+```
+
+
+### Two samples filtered  - FDR 0.1
+```{r filtering 0.1, echo=TRUE, message=FALSE, warning=FALSE}
+sample_distribution_dataset <- sample_dist(counts, barcodes, genes, 
+                                filenames, emptydrops_run = TRUE, fdr_threshold = 0.1)
+
+#sample_distribution_plot <- plot_distributions(sample_distribution_dataset) 
+
+plot_distributions_boxplots(sample_distribution_dataset[[1]], 2)
+
+plot_intersections(sample_distribution_dataset[[2]])
+
+plot_distributions_density(sample_distribution_dataset[[1]])
+
+kp1sample <- knee_plot_sample_distribution(sample_distribution_dataset[[2]], 1, 0.05)
+kp2sample <- knee_plot_sample_distribution(sample_distribution_dataset[[2]], 2, 0.05)
+
+grid.arrange(
+    kp1sample, 
+    kp2sample,
+    nrow = 1,
+    ncol = 2,
+    top = textGrob('p-val threshold - 0.05', gp=gpar(fontsize=18,font=8))
+  )
+```
+
+
+
+```{r echo=TRUE}
+kp1sample <- knee_plot_sample_distribution(sample_distribution_dataset[[2]], 1, 0.01)
+kp2sample <- knee_plot_sample_distribution(sample_distribution_dataset[[2]], 2, 0.01)
+
+grid.arrange(
+    kp1sample, 
+    kp2sample,
+    nrow = 1,
+    ncol = 2,
+    top = textGrob('p-val threshold - 0.01', gp=gpar(fontsize=18,font=8))
+  )
+```
+
+
+```{r echo=TRUE}
+kp1sample <- knee_plot_sample_distribution(sample_distribution_dataset[[2]], 1, 0.001)
+kp2sample <- knee_plot_sample_distribution(sample_distribution_dataset[[2]], 2, 0.001)
+
+grid.arrange(
+    kp1sample, 
+    kp2sample,
+    nrow = 1,
+    ncol = 2,
+    top = textGrob('p-val threshold - 0.001', gp=gpar(fontsize=18,font=8))
+  )
+```
+
+
+### Two samples filtered  - FDR 0.05
+```{r filtering 0.05, echo=TRUE, message=FALSE, warning=FALSE}
+sample_distribution_dataset <- sample_dist(counts, barcodes, genes, 
+                                filenames, emptydrops_run = TRUE, fdr_threshold = 0.05)
+
+#sample_distribution_plot <- plot_distributions(sample_distribution_dataset) 
+
+plot_distributions_boxplots(sample_distribution_dataset[[1]], 2)
+
+plot_intersections(sample_distribution_dataset[[2]])
+
+plot_distributions_density(sample_distribution_dataset[[1]])
+
+kp1sample <- knee_plot_sample_distribution(sample_distribution_dataset[[2]], 1, 0.05)
+kp2sample <- knee_plot_sample_distribution(sample_distribution_dataset[[2]], 2, 0.05)
+
+grid.arrange(
+    kp1sample, 
+    kp2sample,
+    nrow = 1,
+    ncol = 2,
+    top = textGrob('p-val threshold - 0.05', gp=gpar(fontsize=18,font=8))
+  )
+```
+
+
+
+```{r echo=TRUE}
+kp1sample <- knee_plot_sample_distribution(sample_distribution_dataset[[2]], 1, 0.01)
+kp2sample <- knee_plot_sample_distribution(sample_distribution_dataset[[2]], 2, 0.01)
+
+grid.arrange(
+    kp1sample, 
+    kp2sample,
+    nrow = 1,
+    ncol = 2,
+    top = textGrob('p-val threshold - 0.01', gp=gpar(fontsize=18,font=8))
+  )
+```
+
+
+```{r echo=TRUE}
+kp1sample <- knee_plot_sample_distribution(sample_distribution_dataset[[2]], 1, 0.001)
+kp2sample <- knee_plot_sample_distribution(sample_distribution_dataset[[2]], 2, 0.001)
+
+grid.arrange(
+    kp1sample, 
+    kp2sample,
+    nrow = 1,
+    ncol = 2,
+    top = textGrob('p-val threshold - 0.001', gp=gpar(fontsize=18,font=8))
+  )
+```
+
+
+### Two samples filtered  - FDR 0.01
+```{r filtering 0.01, echo=TRUE, message=FALSE, warning=FALSE}
+sample_distribution_dataset <- sample_dist(counts, barcodes, genes, 
+                                filenames, emptydrops_run = TRUE, fdr_threshold = 0.01)
+
+#sample_distribution_plot <- plot_distributions(sample_distribution_dataset) 
+
+plot_distributions_boxplots(sample_distribution_dataset[[1]], 2)
+
+plot_intersections(sample_distribution_dataset[[2]])
+
+plot_distributions_density(sample_distribution_dataset[[1]])
+
+kp1sample <- knee_plot_sample_distribution(sample_distribution_dataset[[2]], 1, 0.05)
+kp2sample <- knee_plot_sample_distribution(sample_distribution_dataset[[2]], 2, 0.05)
+
+grid.arrange(
+    kp1sample, 
+    kp2sample,
+    nrow = 1,
+    ncol = 2,
+    top = textGrob('p-val threshold - 0.05', gp=gpar(fontsize=18,font=8))
+  )
+```
+
+
+```{r echo=TRUE}
+kp1sample <- knee_plot_sample_distribution(sample_distribution_dataset[[2]], 1, 0.01)
+kp2sample <- knee_plot_sample_distribution(sample_distribution_dataset[[2]], 2, 0.01)
+
+grid.arrange(
+    kp1sample, 
+    kp2sample,
+    nrow = 1,
+    ncol = 2,
+    top = textGrob('p-val threshold - 0.01', gp=gpar(fontsize=18,font=8))
+  )
+```
+
+
+```{r echo=TRUE}
+kp1sample <- knee_plot_sample_distribution(sample_distribution_dataset[[2]], 1, 0.001)
+kp2sample <- knee_plot_sample_distribution(sample_distribution_dataset[[2]], 2, 0.001)
+
+grid.arrange(
+    kp1sample, 
+    kp2sample,
+    nrow = 1,
+    ncol = 2,
+    top = textGrob('p-val threshold - 0.001', gp=gpar(fontsize=18,font=8))
+  )
+```
+
+
+### Two samples filtered  - FDR 0.001
+```{r filtering 0.001, echo=TRUE, warning=FALSE}
+sample_distribution_dataset <- sample_dist(counts, barcodes, genes, 
+                                filenames, emptydrops_run = TRUE, fdr_threshold = 0.001)
+
+#sample_distribution_plot <- plot_distributions(sample_distribution_dataset) 
+
+plot_distributions_boxplots(sample_distribution_dataset[[1]], 2)
+
+plot_intersections(sample_distribution_dataset[[2]])
+
+plot_distributions_density(sample_distribution_dataset[[1]])
+
+kp1sample <- knee_plot_sample_distribution(sample_distribution_dataset[[2]], 1, 0.05)
+kp2sample <- knee_plot_sample_distribution(sample_distribution_dataset[[2]], 2, 0.05)
+
+grid.arrange(
+    kp1sample, 
+    kp2sample,
+    nrow = 1,
+    ncol = 2,
+    top = textGrob('p-val threshold - 0.05', gp=gpar(fontsize=18,font=8))
+  )
+```
+
+
+```{r echo=TRUE}
+kp1sample <- knee_plot_sample_distribution(sample_distribution_dataset[[2]], 1, 0.01)
+kp2sample <- knee_plot_sample_distribution(sample_distribution_dataset[[2]], 2, 0.01)
+
+grid.arrange(
+    kp1sample, 
+    kp2sample,
+    nrow = 1,
+    ncol = 2,
+    top = textGrob('p-val threshold - 0.01', gp=gpar(fontsize=18,font=8))
+  )
+```
+
+
+```{r echo=TRUE}
+kp1sample <- knee_plot_sample_distribution(sample_distribution_dataset[[2]], 1, 0.001)
+kp2sample <- knee_plot_sample_distribution(sample_distribution_dataset[[2]], 2, 0.001)
+
+grid.arrange(
+    kp1sample, 
+    kp2sample,
+    nrow = 1,
+    ncol = 2,
+    top = textGrob('p-val threshold - 0.001', gp=gpar(fontsize=18,font=8))
+  )
+```
+
+
