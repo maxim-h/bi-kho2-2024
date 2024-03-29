@@ -3,9 +3,10 @@ library(ggplot2)
 library(ggpubr)
 library(grid)
 library(gridExtra)
+library(ComplexUpset)
 source('EmptyDrops_filtering.R')
 
-#-----------------------------------------------------Function to calculate basic metrics
+#----------------------------------------Function to calculate basic metrics
 
 umi_gene_dist <- function(counts_path, barcodes_path, genes_path, file_name,
                           emptydrops_run = FALSE, lower = 100, 
@@ -123,114 +124,130 @@ umi_gene_dist <- function(counts_path, barcodes_path, genes_path, file_name,
 }
 
 
-#-----------------------------------------------------Function to calculate UMI distribution between samples
+#----------------------------------------Function to calculate UMI distribution between samples
 
-sample_dist <- function(counts_path_s1, barcodes_path_s1, genes_path_s1, 
-                        counts_path_s2, barcodes_path_s2, genes_path_s2,
+read_10X_samples <- function(counts_path, barcodes_path, genes_path, 
                         file_name, emptydrops_run = FALSE, lower = 100, 
                         test.ambient = TRUE, fdr_threshold = 0.05, 
                         return_indices = FALSE){
   
-  #----------------------------------------Import Solo1-----------------------------------------------------------------------------------------------
+  #----------------------------------------Import data-----------------------------------------------------------------------------------------------
   
-  #Read files
-  counts_s1 <- Matrix::readMM(counts_path_s1)
-  genes_s1 <- readr::read_tsv(genes_path_s1, col_names = FALSE)
-  gene_ids_s1 <- genes_s1$X1
-  cell_ids_s1 <- readr::read_tsv(barcodes_path_s1, col_names = FALSE)$X1
+  number_of_samples <- length(counts)
   
-  #Assign row and colnames
-  rownames(counts_s1) <- gene_ids_s1
-  colnames(counts_s1) <- cell_ids_s1
+  # Create empty list
+  experiments <- list(data = list(), names = list(), counts_full = list(), counts = list(), distributions = list(), non_filt_pvals = list(), umi_sum = list())
+
   
-  #Calculate UMI per cell barcode distribution
-  umi_per_CB_s1_mtx <- Matrix::colSums(counts_s1)[Matrix::colSums(counts_s1) > 0]
-  
-  #Convert to DF
-  DF_umi_per_CB_s1 <- as.data.frame(umi_per_CB_s1_mtx)
-  
-  #Run emptydrops IF needed
-  if (emptydrops_run == TRUE) {
+  for (i in 1:number_of_samples){
+    count_tables <- Matrix::readMM(counts[i])
+    rownames(count_tables) <- readr::read_tsv(genes[i], col_names = FALSE)$X1
+    colnames(count_tables) <- readr::read_tsv(barcodes[i], col_names = FALSE)$X1
+    counts_data <- as.data.frame(Matrix::colSums(count_tables)[Matrix::colSums(count_tables) > 0])
     
-    #Data filtering with empty drops
-    filtered_counts_s1 <- filter_barcodes_with_emptyDrops(matrix = counts_s1, lower = lower, test.ambient = test.ambient)
-    
-    #Filtered barcodes
-    filtered_barcodes_list_s1 <- return_filtered_barcodes_or_indices(filtered_counts_s1, fdr_threshold = fdr_threshold, 
-                                                                  return_indices = return_indices)
-    
-    DF_umi_per_CB_s1 <- filter(DF_umi_per_CB_s1, rownames(DF_umi_per_CB_s1) %in% filtered_barcodes_list_s1)
+    #Run emptydrops IF needed
+    if (emptydrops_run == TRUE) {
+      
+      #Data filtering with empty drops
+      filtered_counts <- filter_barcodes_with_emptyDrops(matrix = count_tables, lower = lower, test.ambient = test.ambient)
+      
+      #Filtered barcodes
+      filtered_barcodes_list <- return_filtered_barcodes_or_indices(filtered_counts, fdr_threshold = fdr_threshold, 
+                                                                       return_indices = return_indices)
+      
+      counts_data <- filter(counts_data, rownames(counts_data) %in% filtered_barcodes_list)
+    }
+    colnames(counts_data) <- glue::glue('UMI_count_sample_{i}')
+    experiments$data[[i]] <- counts_data
+    experiments$names[[i]] <- filenames[i]
+    experiments$umi_sum[[i]] <- sum(counts_data)
   }
-  
-  #----------------------------------------Import Solo2-----------------------------------------------------------------------------------------------
-  
-  #Read files
-  counts_s2 <- Matrix::readMM(counts_path_s2)
-  genes_s2 <- readr::read_tsv(genes_path_s2, col_names = FALSE)
-  gene_ids_s2 <- genes_s2$X1
-  cell_ids_s2 <- readr::read_tsv(barcodes_path_s2, col_names = FALSE)$X1
-  
-  #Assign row and colnames
-  rownames(counts_s2) <- gene_ids_s2
-  colnames(counts_s2) <- cell_ids_s2
-  
-  #Calculate UMI per cell barcode distribution
-  umi_per_CB_s2_mtx <- Matrix::colSums(counts_s2)[Matrix::colSums(counts_s2) > 0]
-  
-  #Convert to DF
-  DF_umi_per_CB_s2 <- as.data.frame(umi_per_CB_s2_mtx)
-  
-  #Run emptydrops IF needed
-  if (emptydrops_run == TRUE) {
-    
-    #Data filtering with empty drops
-    filtered_counts_s2 <- filter_barcodes_with_emptyDrops(matrix = counts_s2, lower = lower, test.ambient = test.ambient)
-    
-    #Filtered barcodes
-    filtered_barcodes_list_s2 <- return_filtered_barcodes_or_indices(filtered_counts_s2, fdr_threshold = fdr_threshold, 
-                                                                  return_indices = return_indices)
-    
-    DF_umi_per_CB_s2 <- filter(DF_umi_per_CB_s2, rownames(DF_umi_per_CB_s2) %in% filtered_barcodes_list_s2)
-  }
-  
-  #----------------------------------------Calculate distributions----------------------------------------------------------------------------------------------
-  
-  #Merge dataset
-  DF_umi_per_CB_s1_s2 <- merge(DF_umi_per_CB_s1, DF_umi_per_CB_s2, 
-                               by = 'row.names', all = FALSE)
-  
-  colnames(DF_umi_per_CB_s1_s2) <- c('Barcodes', 'umi_per_CB_s1', 'umi_per_CB_s2')
-  
-  #Replcase NA's with 0
-  DF_umi_per_CB_s1_s2[is.na(DF_umi_per_CB_s1_s2)] <- 0
-  
-  #Calculate distribution
-  DF_umi_per_CB_s1_s2 <- DF_umi_per_CB_s1_s2 %>%
-    mutate(dist_s1 = round(umi_per_CB_s1/(umi_per_CB_s1 + umi_per_CB_s2),5)) %>%
-    mutate(dist_s2 = round(umi_per_CB_s2/(umi_per_CB_s1 + umi_per_CB_s2),5)) %>%
-    mutate(sum = umi_per_CB_s1 + umi_per_CB_s2)
-  
-  #----------------------------------------Binomial testing----------------------------------------------------------------------------------------------
-  
-  binomial.test <- function(s1, sum, p = 0.5) {binom.test(s1, sum, p)$p.value}
-  
-  # Binomial test with custom function
-  DF_umi_per_CB_s1_s2$p_val_binom <- mapply(binomial.test, DF_umi_per_CB_s1_s2$umi_per_CB_s1, DF_umi_per_CB_s1_s2$sum)
-  
-  # P-value adjustment for custom binomial test
-  DF_umi_per_CB_s1_s2$p_val_adj_binom <- p.adjust(DF_umi_per_CB_s1_s2$p_val_binom, method='BH', n = length(DF_umi_per_CB_s1_s2$p_val_binom))
-  
-  # Binomial test with dbinom
-  DF_umi_per_CB_s1_s2$p_val_binom2 <- dbinom(DF_umi_per_CB_s1_s2$umi_per_CB_s1, DF_umi_per_CB_s1_s2$sum, 0.5)
-  
-  # P-value adjustment for binomial test with dbinom
-  DF_umi_per_CB_s1_s2$p_val_adj_binom2 <- p.adjust(DF_umi_per_CB_s1_s2$p_val_binom2, method='BH', n = length(DF_umi_per_CB_s1_s2$p_val_binom2))
-  
-  return(DF_umi_per_CB_s1_s2)
+  return(experiments)
 }
 
+#----------------------------------------Calculate distributions----------------------------------------------------------------------------------------------
+  
+calculate_distributions <- function(experiments, number_of_samples){
+  
+  merged_dataset <- experiments$data[[1]] %>%
+    tibble::rownames_to_column(var = 'Barcodes')
+  
+  for (i in 2:number_of_samples){
+    merged_dataset <- merge(merged_dataset, tibble::rownames_to_column(experiments$data[[i]], var = 'Barcodes'), by = 'Barcodes', all = FALSE)
+  }
 
-#-----------------------------------------------------Function to plot UMI distribution between samples
+  merged_dataset_full <- experiments$data[[1]] %>%
+    tibble::rownames_to_column(var = 'Barcodes')
+  
+  for (i in 2:number_of_samples){
+    merged_dataset_full <- merge(merged_dataset_full, tibble::rownames_to_column(experiments$data[[i]], var = 'Barcodes'), by = 'Barcodes', all = TRUE)
+  }
+  
+  merged_dataset_full[is.na(merged_dataset_full)] <- 0
+  
+  #Calculate distribution
+  merged_dataset_distributions <- merged_dataset %>%
+    dplyr::mutate(sum_UMI = rowSums(select(., starts_with('UMI')))) %>%
+    dplyr::mutate_at(vars(starts_with("UMI")), function(x) (x / .$sum_UMI))
+
+  experiments$counts_full <- merged_dataset_full
+  experiments$counts <- merged_dataset
+  experiments$distributions <- merged_dataset_distributions
+  
+  return(experiments)
+}
+
+#----------------------------------------Binomial testing----------------------------------------------------------------------------------------------
+  
+multinomial_testing <- function(experiments, number_of_samples){
+  
+  #library(EMT)
+    
+  #perform_multinomial_test <- function(row_data) {
+  #  p_value <- EMT::multinomial.test(row_data, rep(1/number_of_samples, number_of_samples))$p.value
+  #  return(p_value)
+  #}
+  
+  # Apply the function row-wise to the selected columns and store p-values
+  #merged_dataset_distributions$p_val_multinom <- mapply(perform_multinomial_test, select(merged_dataset, starts_with('UMI_')))
+
+  if (number_of_samples == 2){
+    binomial.test <- function(s1, sum, p = 0.5) {binom.test(s1, sum, p)$p.value}
+    
+    # Binomial test with custom function
+    experiments$counts$p_val <- mapply(binomial.test, experiments$counts$UMI_count_sample_1, experiments$counts$UMI_count_sample_1 + experiments$counts$UMI_count_sample_2)
+    
+    # P-value adjustment for custom binomial test
+    experiments$counts$p_val_adj <- p.adjust(experiments$counts$p_val, method='BH', n = length(experiments$counts$UMI_count_sample_1))
+  } else {
+    probs <- rep(1/number_of_samples, number_of_samples)
+    for (i in 1:length(experiments$counts$Barcodes)){
+      values <- as.numeric(as.vector(select(experiments$counts, starts_with('UMI_'))[1, ]))
+      experiments$counts$p_val[i] <- EMT::multinomial.test(values, probs)$p.value
+    }
+    experiments$counts$p_val_adj <- p.adjust(experiments$counts$p_val, method='BH', n = length(experiments$counts$UMI_count_sample_1))
+  }
+  
+  pvals <- select(experiments$counts, c(Barcodes, p_val_adj))
+  
+  experiments$non_filt_pvals <- pvals
+  # Binomial test with dbinom
+  #DF_umi_per_CB_s1_s2$p_val_binom2 <- dbinom(DF_umi_per_CB_s1_s2$umi_per_CB_s1, DF_umi_per_CB_s1_s2$sum, 0.5)
+  
+  # P-value adjustment for binomial test with dbinom
+  #DF_umi_per_CB_s1_s2$p_val_adj_binom2 <- p.adjust(DF_umi_per_CB_s1_s2$p_val_binom2, method='BH', n = length(DF_umi_per_CB_s1_s2$p_val_binom2))
+  
+  return(experiments)
+}
+
+#----------------------------------------Assign p-values----------------------------------------------------------------------------------------------
+
+assign_non_filt_pvals <- function(experiments, pvals){
+  experiments$counts <- dplyr::inner_join(experiments$counts, pvals, by='Barcodes')
+  return(experiments)
+}
+
+#----------------------------------------Function to plot UMI distribution between samples
 
 plot_distributions <- function(distributions_dataset){
   #Plot distribution with 0 and 1 values
@@ -298,8 +315,8 @@ plot_distributions <- function(distributions_dataset){
     xlab('Distribution steps') +
     theme(legend.position = "bottom") +
     theme(legend.position = "bottom",
-          axis.text.x = element_text(angle = 45, vjust = 0.5, hjust=0.5))
-  
+          axis.text.x = element_text(angle=45, vjust=0.5, hjust=0.5))
+
   #Combine plots
   final_plot <- grid.arrange(
     mean_max_umi_count_dist_plot_s1,
@@ -312,3 +329,79 @@ plot_distributions <- function(distributions_dataset){
 
   return(final_plot)
 }
+
+
+plot_distributions_density <- function(distributions_dataset){
+  
+  distributions_densityplot <- distributions_dataset %>%
+    dplyr::select(!starts_with('sum')) %>%
+    tidyr::pivot_longer(!Barcodes, names_to = 'samples', values_to = 'distribution') %>%
+    ggplot(., aes(x = distribution, fill = samples)) +
+    geom_density(alpha = 0.7) +
+    scale_x_log10() +
+    xlab('Distributions') +
+    xlab('Density') +
+    theme_bw()
+  
+  return(distributions_densityplot)
+}
+
+
+plot_distributions_boxplots <- function(distributions_dataset, number_of_samples, alpha=0.25){
+  
+  distributions_boxplot <- distributions_dataset %>%
+    tibble::column_to_rownames(var = 'Barcodes') %>%
+    select(starts_with('UMI_')) %>%
+    tibble::rownames_to_column(var = 'Barcodes') %>%
+    tidyr::pivot_longer(!Barcodes, names_to = 'samples', values_to = 'distribution') %>%
+    mutate(samples = as.factor(samples)) %>%
+    ggplot(aes(x = samples, y = distribution, fill = samples)) +
+    geom_point(position = 'jitter', alpha = alpha) +
+    geom_boxplot(outlier.alpha = 0) +
+    geom_hline(yintercept=1/number_of_samples, linetype = "dashed", color = "darkgreen", size = 1) +
+    theme_classic() +
+    theme(axis.text.x=element_blank())
+  
+  return(distributions_boxplot)
+}
+
+
+plot_intersections <- function(counts_dataset_full, min_size=100){
+  
+  test_upset_data <- counts_dataset_full %>%
+    tibble::column_to_rownames(var = 'Barcodes') %>%
+    select(starts_with('UMI_')) %>%
+    mutate_if(is.numeric, ~1 * (. > 0)) 
+
+  intersection_plot <- ComplexUpset::upset(test_upset_data, colnames(test_upset_data), name = "Intersection", width_ratio=0.1, min_size=min_size)
+  
+  return(intersection_plot)
+}
+
+
+knee_plot_sample_distribution <- function(distributions_dataset, sample, threshold = 0.05){
+  
+  distributions_dataset[distributions_dataset == 0] <- NA
+  
+  distributions_dataset <- na.omit(distributions_dataset)
+  
+  distributions_dataset_kp <- distributions_dataset %>%
+    arrange(desc(distributions_dataset[, sample+1])) %>%
+    mutate(is_FDR_sign = as.factor(ifelse(p_val_adj < threshold, 'Sign', 'Unsign')))
+           
+  knee_plot <- ggplot(distributions_dataset_kp, aes(x = c(1:length(distributions_dataset_kp[, sample+1])), y = distributions_dataset_kp[, sample+1], color = is_FDR_sign, size = is_FDR_sign)) +
+     geom_point() +
+     theme_bw() +
+     ylab('UMI distribution') +
+     xlab('Barcodes, ranked by sum') +
+     theme(legend.position = "bottom") +
+     theme(legend.position = "bottom",
+           axis.text.x = element_text(angle = 45, vjust = 0.5, hjust=0.5)) +
+     scale_x_log10() +
+     scale_y_log10()
+
+  return(knee_plot)
+}
+
+
+
