@@ -223,7 +223,7 @@ multinomial_testing <- function(experiments, number_of_samples){
     probs <- rep(1/number_of_samples, number_of_samples)
     for (i in 1:length(experiments$counts$Barcodes)){
       values <- as.numeric(as.vector(select(experiments$counts, starts_with('UMI_'))[1, ]))
-      experiments$counts$p_val[i] <- EMT::multinomial.test(values, probs)$p.value
+      experiments$counts$p_val[i] <- EMT::multinomial.test(values, probs, MonteCarlo = TRUE)$p.value
     }
     experiments$counts$p_val_adj <- p.adjust(experiments$counts$p_val, method='BH', n = length(experiments$counts$UMI_count_sample_1))
   }
