@@ -1,0 +1,463 @@
+---
+title: "Gene and Empty_Drop Filtration"
+author: "Maria"
+date: "2024-03-21"
+output: html_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+Libraries
+
+```{r, libraries, echo=FALSE, warning=FALSE, message=FALSE}
+library(dplyr)
+library(Matrix)
+library(tibble)
+library(ggplot2)
+library(ggpubr)
+library(grid)
+library(gridExtra)
+library(viridis)
+library(RColorBrewer)
+library(DropletUtils)
+library(glue)
+```
+Определим функцию, которая  возвращает отсортированный по количеству UMI/CB датафрейм, полученный для суммарного количество UMI в двух(!) образцах 
+```{r, warning=FALSE}
+UMI_per_CB_sample_dist <- function(counts_path_s1, barcodes_path_s1, genes_path_s1, counts_path_s2, barcodes_path_s2, genes_path_s2){
+
+  #Read files
+  counts <- Matrix::readMM(counts_path_s1)
+  genes <- readr::read_tsv(genes_path_s1, col_names = FALSE)
+  gene_ids <- genes$X1
+  cell_ids <- readr::read_tsv(barcodes_path_s1, col_names = FALSE)$X1
+  
+  #Assign row and colnames
+  rownames(counts) <- gene_ids
+  colnames(counts) <- cell_ids
+  
+  #Calculate UMI per cell barcode distribution
+  umi_per_CB <- Matrix::colSums(counts)[Matrix::colSums(counts) > 0]
+  
+  #Calculate gene per cell barcode distribution
+  gene_per_CB <- Matrix::colSums(counts > 0)[Matrix::colSums(counts) > 0]
+  
+  
+  #Create sorted UMI_count DF
+  DF_umi_per_CB1 <- as.data.frame(umi_per_CB) %>%
+    arrange(desc(umi_per_CB)) %>%
+    mutate(cb = as.numeric(rownames(as.data.frame(umi_per_CB))))
+  
+  #Read files
+  counts <- Matrix::readMM(counts_path_s2)
+  genes <- readr::read_tsv(genes_path_s2, col_names = FALSE)
+  gene_ids <- genes$X1
+  cell_ids <- readr::read_tsv(barcodes_path_s2, col_names = FALSE)$X1
+  
+  #Assign row and colnames
+  rownames(counts) <- gene_ids
+  colnames(counts) <- cell_ids
+  
+  #Calculate UMI per cell barcode distribution
+  umi_per_CB <- Matrix::colSums(counts)[Matrix::colSums(counts) > 0]
+  
+  #Calculate gene per cell barcode distribution
+  gene_per_CB <- Matrix::colSums(counts > 0)[Matrix::colSums(counts) > 0]
+  
+  
+  #Create sorted UMI_count DF
+  DF_umi_per_CB2 <- as.data.frame(umi_per_CB) %>%
+    arrange(desc(umi_per_CB)) %>%
+    mutate(cb = as.numeric(rownames(as.data.frame(umi_per_CB))))
+  
+  
+  DF_umi_per_CB_s1_s2_sort <- merge(DF_umi_per_CB1, DF_umi_per_CB2, 
+                               by = 'row.names', all = TRUE)
+  #DF_only_common <- merge(DF_umi_per_CB1, DF_umi_per_CB2, 
+  #                by = 'row.names', all = FALSE)
+  #Replcase NA's with 0
+  DF_umi_per_CB_s1_s2_sort[is.na(DF_umi_per_CB_s1_s2_sort)] <- 0
+  
+  #Calculate distribution
+  DF_umi_per_CB_s1_s2_sort <- DF_umi_per_CB_s1_s2_sort %>%
+    mutate(dist_s1 = round(umi_per_CB.x/(umi_per_CB.x + umi_per_CB.y),6)) %>%
+    mutate(dist_s2 = round(umi_per_CB.y/(umi_per_CB.x + umi_per_CB.y),6))
+  
+  #DF_for_knee_s1 <-subset(DF_umi_per_CB_s1_s2_sort, dist_s1 > 0)
+  #DF_for_knee_s2 <-subset(DF_umi_per_CB_s1_s2_sort, dist_s2 > 0)
+  
+  DF_all <- DF_umi_per_CB_s1_s2_sort %>%
+    mutate(dist_s1 = round(umi_per_CB.x/(umi_per_CB.x + umi_per_CB.y),6)) %>%
+    mutate(dist_s2 = round(umi_per_CB.y/(umi_per_CB.x + umi_per_CB.y),6))%>%
+    mutate(umi_per_CB_total = umi_per_CB.y + umi_per_CB.x)
+  DF_all_sorted <- as.data.frame(DF_all) %>%
+    arrange(desc(DF_all$umi_per_CB_total))
+  DF_all_sorted <- as.data.frame(DF_all_sorted) %>%
+    mutate(common_CB_number = as.numeric(rownames(as.data.frame(DF_all_sorted))))
+  #пока уберу, так как я тут готовлю только суммарный DF, где включены, в том числе 0 для каждого
+  #DF_only_common_sorted <-subset(DF_all_sorted, dist_s1 > 0)
+  #DF_only_common_sorted <-subset(DF_only_common_sorted, dist_s1 < 1)
+  return (DF_all_sorted)
+}
+```
+Теперь определим фуункцию, которая будет строить knee_plot и  раскрашивать его в зависимость от того, какая доля UMI пришла в суммарны датасет из первого образца
+Ппринимает на вход датафрейм,  и название графика
+В df должны быть следующие колонки:
+*common_CB_number* номер баркода  из суммарного для двух образцов df отсортированного по общему количеству UMI/CB
+*umi_per_CB* количество UMI для этого баркода в  ДВУХ образце 1
+*dist_s1*  - отношение количества UMI для этого баркода в образце 1 к количеству всех UMI для этого баркода и имя образца
+```{R}
+knee_plot_UMI_sample_dist <- function(df, name){
+  colors <- brewer.pal(n = 11, name = "Spectral")
+  knee_plot_UMI_sample_dist <- ggplot(df, aes(x = common_CB_number, y = umi_per_CB_total, colour = dist_s1)) +
+    geom_point(size = 1) +
+    labs(y = 'UMI count, log10', x = 'cell barcodes, log10') +
+    theme_linedraw() +
+    theme(axis.text=element_text(size=14),
+          axis.title=element_text(size=16,face="bold")) +
+    scale_x_log10() +
+    scale_y_log10() +
+    scale_colour_gradientn(colours = colors,
+                           guide = guide_colorbar(title = "UMIs from Sample1"))+
+    ggtitle(name)
+  return (knee_plot_UMI_sample_dist)
+}
+```
+Напишем функцию для фильтрования баркодов из сырой матрицы при помощи EmptyDrops
+Принимает на вход:
+*sparse_matrix* матрица,
+*lower* = 100 порог отсечки,
+*test.ambient* = TRUE
+
+```{R, warning=FALSE}
+
+filter_barcodes_with_emptyDrops <- function(sparse_matrix, lower = 100, test.ambient = TRUE) {
+  emptyDrops_df = emptyDrops(sparse_matrix, lower = lower, test.ambient = test.ambient)
+  emptyDrops_df$FDR[is.na(emptyDrops_df$FDR)] <- 1 # выставляю всем NA FDR единичку
+  return(emptyDrops_df)
+}
+
+return_filtered_barcodes_or_indeces <- function(emptyDrops_df, fdr_threshold = 0.05, return_indeces = FALSE) {
+  filtered_barcodes_indeces <- which(emptyDrops_df$FDR < fdr_threshold) #список со всеми отфильтр. баркодами
+  
+  if (return_indeces) {
+    return(filtered_barcodes_indeces)
+  }
+  return(rownames(emptyDrops_df)[filtered_barcodes_indeces])
+}
+```
+Проведем фильтрацию для каждого из двух образцов Solo1 и Solo2
+
+Чтение данных solo1
+```{R matrices,  warning=FALSE, , message=FALSE}
+path_to_matrix <- "Data/Solo.out_1/Gene/raw/matrix.mtx.gz"
+path_to_barcodes <- "Data/Solo.out_1/Gene/raw/barcodes.tsv.gz"
+matrix_1_raw <- readMM(path_to_matrix)
+cell_ids <- readr::read_tsv(path_to_barcodes, col_names = FALSE)$X1
+colnames(matrix_1_raw) <- cell_ids
+```
+
+Запуск emptyDrops solo1 и получение списка выбранных баркодов
+```{R}
+emptyDrops_df_1 <- filter_barcodes_with_emptyDrops(matrix_1_raw)
+filtered_barcodes1 <- return_filtered_barcodes_or_indeces(emptyDrops_df_1, fdr_threshold = 0.05) #список со всеми отфильтр. баркодами
+#filtered_barcodes_indeces <- return_filtered_barcodes_or_indeces(emptyDrops_df_1, fdr_threshold = 0.05, return_indeces = TRUE) #список со всеми индексами отфильтр. баркодов
+```
+
+Чтение данных solo2
+```{R, warning=FALSE, message=FALSE}
+path_to_matrix <- "Data/Solo.out_2/Gene/raw/matrix.mtx.gz"
+path_to_barcodes <- "Data/Solo.out_2/Gene/raw/barcodes.tsv.gz"
+matrix_2_raw <- readMM(path_to_matrix)
+cell_ids <- readr::read_tsv(path_to_barcodes, col_names = FALSE)$X1
+colnames(matrix_2_raw) <- cell_ids
+```
+
+Запуск emptyDrops solo2 и  и получение списка выбранных баркодов
+
+```{R}
+emptyDrops_df_2 <- filter_barcodes_with_emptyDrops(matrix_2_raw)
+#emptyDrops_df_2
+filtered_barcodes2 <- return_filtered_barcodes_or_indeces(emptyDrops_df_2, fdr_threshold = 0.05) #список со всеми отфильтр. баркодами
+
+```
+
+Получили около 4000 СВ отобранный для Solo1 (из 55501), и меньше тысячи для Solo2 (из 37628). Отбирали n>100, fdr_threshold = 0.05
+посмотрим, какие из них общие, а сколько получается суммарно для двух образцов
+
+```{R}
+filtered_barcodes_common <- intersect(filtered_barcodes1, filtered_barcodes2)
+#print(length(filtered_barcodes_common))
+filtered_barcodes <- unique(c(filtered_barcodes1, filtered_barcodes2))
+print(length(filtered_barcodes))
+```
+видим, что, в одном из вариантов расчета,  731 баркод (из 4170 и 960) был отобран из каждого из двух образцов, суммарно для двух образцов выбрано разных 4399 (данные меняются, так как есть этап рандомайза из-за использования метода Монте-Карло)
+
+Теперь получим датафрейм для двух образцов Solo1 и Solo2, в котором будут посчитано сумманое количество UMI и доля, пришедшая из каждого образца
+```{R, warning=FALSE, message=FALSE}
+#-----------------------------------------------------Solo1_raw
+
+counts_path_s1 <- ("Data/Solo.out_1/Gene/raw/matrix.mtx.gz")
+genes_path_s1 <- ("Data/Solo.out_1/Gene/raw/features.tsv.gz")
+barcodes_path_s1 <- ("Data/Solo.out_1/Gene/raw/barcodes.tsv.gz")
+
+#-----------------------------------------------------Solo2_raw
+counts_path_s2 <- ("Data/Solo.out_2/Gene/raw/matrix.mtx.gz")
+genes_path_s2 <- ("Data/Solo.out_2/Gene/raw/features.tsv.gz")
+barcodes_path_s2 <- ("Data/Solo.out_2/Gene/raw/barcodes.tsv.gz")
+
+dfGR <- UMI_per_CB_sample_dist(counts_path_s1, barcodes_path_s1, genes_path_s1, counts_path_s2, barcodes_path_s2, genes_path_s2)
+```
+Найдем в суммарных данных для Solo1 и Solo2 те CB, которые были выбраны ED для Solo1 и Solo2, и те, которые были забракованы
+Получается  примерно 4350 СВ отобраны по двум образцам, при этом 3480 содержат > 100 UMI, но не были выбраны ED (тут еще можно посмотреть, наверное, какие не были выбраны из 1, и из 2 отдельно)
+```{R}
+ED_in_all <-  subset(dfGR, Row.names %in% filtered_barcodes)
+ED_rejected_in_all <-  subset(dfGR, !(Row.names %in% filtered_barcodes))
+ED_rejected_in_all_more_than_100 <- subset(ED_rejected_in_all, (ED_rejected_in_all$umi_per_CB.x > 100 | ED_rejected_in_all$umi_per_CB.y > 100 )) 
+ED_rejected_in_all_more_than_100_solo20 <- subset(ED_rejected_in_all_more_than_100, ED_rejected_in_all_more_than_100$umi_per_CB.y == 0)
+ED_rejected_in_all_more_than_100_solo10 <- subset(ED_rejected_in_all_more_than_100, ED_rejected_in_all_more_than_100$umi_per_CB.x == 0)
+#ED_result_filtered <- subset(dfGF, Row.names %in% filtered_barcodes)
+#dif_ED_result_filtered <- subset(dfGF, !(Row.names %in% filtered_barcodes))
+```
+построим графики для суммарного количества образцов и отфильтрованных, с помощью ED, из суммарного DF отбираем только общие для двух образцов
+```{R}
+dfGR_common <-subset(dfGR, dist_s1 > 0)
+dfGR_common <-subset(dfGR_common, dist_s1 < 1)
+
+```
+Перемешаем строки в датафреймах, чтобы при построении графиков, когда будут накладываться точки, на передний план выходили случайные
+```{R}
+dfGR_common_shuffled <- dfGR_common[sample(nrow(dfGR_common)), ]
+ED_rejected_in_all_more_than_100_shuffled <- ED_rejected_in_all_more_than_100[sample(nrow(ED_rejected_in_all_more_than_100)), ]
+ED_result_shuffled <- ED_in_all[sample(nrow(ED_in_all)), ] 
+```
+Запись результатов в CSV
+```{R, echo = FALSE}
+#write.csv(ED_result, file = "common_gene_row_ED_filtered.csv", row.names = TRUE)
+#write.csv(ED_result_filtered, file = "common_gene_filtered_ED_filtered.csv", row.names = TRUE)
+#write.csv(dif_ED_result_filtered, file = "common_gene_filtered_not_in_ED_filered.csv", row.names = TRUE)
+```
+
+Построим knee plot с окраской по доле пришедших из Solo1 для нефильтрованных данных GeneRaw
+```{R}
+plotGR <- knee_plot_UMI_sample_dist(dfGR_common_shuffled, 'Solo1(Gene_Raw)')
+plotGR
+file_path <- "Solo1(Gene_Raw).png"
+
+# Сохраните plotGR в формате PNG
+ggsave(file = file_path, plot = plotGR, width = 8, height = 6, units = "in", dpi = 300)
+```
+Построим аналогичный knee_plot для отфильтрованных Empty Drops
+```{R}
+plotGF <- knee_plot_UMI_sample_dist(ED_result_shuffled, 'Solo1(Gene_Filtered_byED)')
+plotGF
+file_path <- "Solo1(Gene_Filtered_byED).png"
+ggsave(file = file_path, plot = plotGF, width = 8, height = 6, units = "in", dpi = 300)
+```
+
+И построим те, которые не были выбраны Empty_Drops, но в которых больше 100 UMI
+```{R}
+plot_rejected_sh <- knee_plot_UMI_sample_dist(ED_rejected_in_all_more_than_100_shuffled, 'Rejected_by_ED')
+plot_rejected_sh
+file_path <- "Rejected_byED.png"
+ggsave(file = file_path, plot = plotGR, width = 8, height = 6, units = "in", dpi = 300)
+```
+Сравним между собой капли отобранные ED, и те, которые быть выкинуты, но в них > 100 UMI, Full будем называть те, которые ED считает не пустыми, а empty - посчитанные пустыми, но, в которых > 100 UMI
+
+```{R}
+DF_full <- ED_result_shuffled
+DF_empty <- ED_rejected_in_all_more_than_100_shuffled
+
+```
+сначала посмотрим просто на средние значения UMI/CB в фильтрованных/нефильтрованных данных
+```{R}
+mean_DF_full <- mean(DF_full$umi_per_CB_total)
+mean_DF_empty <- mean(DF_empty$umi_per_CB_total)
+mean_DF_full_in1 <- mean(DF_full$umi_per_CB.x)
+mean_DF_empty_in1 <- mean(DF_empty$umi_per_CB.x)
+mean_DF_full_in2 <- mean(DF_full$umi_per_CB.y)
+mean_DF_empty_in2 <- mean(DF_empty$umi_per_CB.y)
+
+# Построение графика
+barplot(c(mean_DF_full, mean_DF_empty, mean_DF_full_in1, mean_DF_empty_in1, mean_DF_full_in2, mean_DF_empty_in2), names.arg = c("full", "empty", "full,s1", "empty,s1", "full, s2", "empty, s2"), col = c("skyblue", "lightgreen", "skyblue", "lightgreen", "skyblue", "lightgreen"),
+        main = "Сравнение средних значений для UMI/CB", ylab = "Среднее значение")
+```
+Попробуем построить распределение по UMI/CB
+
+```{R}
+data_list <- list(DF_full$umi_per_CB_total, DF_empty$umi_per_CB_total,
+                  DF_full$umi_per_CB.x, DF_empty$umi_per_CB.x,
+                  DF_full$umi_per_CB.y, DF_empty$umi_per_CB.y)
+
+names(data_list) <- c("DF_full", "DF_empty",
+                      "DF_full in 1", "DF_empty in 1",
+                      "DF_full in 2", "DF_empty in 2")
+
+# Построение боксплотов с усами
+boxplot(data_list, col = rainbow(6), notch = TRUE, 
+        main = "Сравнение средних значений UMI/CB",
+        ylab = "Значение", names = names(data_list))
+
+# Вывод средних значений в качестве точек на графике
+means <- sapply(data_list, mean)
+points(1:6, means, col = "red", pch = 19)
+text(1:6, means, labels = round(means, 2), pos = 3, col = "red")
+```
+Пытаюсь убрать выбросы, чтобы "растянуть боксплоты"
+```{R}
+# Функция для получения стандартного отклонения
+get_sd <- function(x) {
+  stats <- boxplot.stats(x)
+  return(sd(stats$out, na.rm = TRUE))
+}
+
+# Вычисление средних и стандартных отклонений
+means <- sapply(data_list, mean)
+sds <- sapply(data_list, get_sd)
+
+# Построение боксплотов без выбросов
+boxplot(data_list, col = rainbow(6), outline = FALSE, notch = TRUE,
+        main = "Сравнение средних значений UMI/CB",
+        ylab = "Значение", names = list("DF_full", "DF_empty", "DF_full in 1", "DF_empty in 1", "DF_full in 2", "DF_empty in 2"))
+
+# Добавление средних значений и стандартных отклонений на график как точки и отрезки
+points(1:6, means, col = "red", pch = 19)
+segments(1:6, means-sds, 1:6, means+sds, col = "red")
+text(1:6, means, labels = round(means, 2), pos = 3, col = "red")
+
+```
+Посмотрим распределение того насколько часто встречаются разные количества UMI
+
+```{R}
+
+data_list <- list(DF_full$umi_per_CB_total, DF_empty$umi_per_CB_total,
+                  DF_full$umi_per_CB.x, DF_empty$umi_per_CB.x,
+                  DF_full$umi_per_CB.y, DF_empty$umi_per_CB.y)
+colors <- c("blue", "red", "green", "purple", "orange", "cyan")
+
+par(mfrow=c(2,3))
+for (i in 1:6) {hist(data_list[[i]], breaks = 50, col = colors[i], main = names(data_list)[i], xlab = "Значение", ylab = "Частота", freq = TRUE, ylim=c(0,500))}
+
+```
+
+
+
+Теперь попробуем посмотреть на распределение долей UMI из каждого образца
+
+```{R}
+data_list <- list(DF_full$dist_s1, DF_empty$dist_s1, DF_full$dist_s2, DF_empty$dist_s2)
+
+names(data_list) <- c("DF_full-S1", "DF_empty_s1",
+                      "DF_full_s2", "DF_empty_s2")
+
+# Построение боксплотов с усами
+boxplot(data_list, col = rainbow(4), notch = TRUE, 
+        main = "Сравнение распределения долей UMI, пришедших из  одного образца",
+        ylab = "Значение", names = names(data_list))
+
+# Вывод средних значений в качестве точек на графике
+means <- sapply(data_list, mean)
+points(1:4, means, col = "red", pch = 19)
+text(1:4, means, labels = round(means, 2), pos = 3, col = "red")
+
+
+```
+
+```{R}
+df <- data.frame(value = unlist(data_list),
+                 group = rep(c("DF_full-S1", "DF_empty_s1", "DF_full_s2", "DF_empty_s2"), 
+                             sapply(data_list, length)))
+
+# Построение графика кривых распределения
+ggplot(df, aes(x = value, color = group)) +
+  geom_density(alpha = 0.5) +
+  labs(title = "Кривые распределения доли UMI каждого образца в пустых и непустых каплях",
+       x = "Доля UMI", y = "Плотность") +
+  scale_color_manual(values = c("DF_full-S1" = "blue", 
+                                "DF_empty_s1" = "red", 
+                                "DF_full_s2" = "green", 
+                                "DF_empty_s2" = "purple")) +
+  theme_minimal()
+```
+А посчитаем сколько всего было UMI, и сколько осталось после фильтрации
+```{R, echo=FALSE}
+cat('For all CB:')
+cat('\n')
+cat('Total UMI count coming for s1', sum(dfGR$umi_per_CB.x), '\n' )
+cat('Total UMI count coming for s2:',sum(dfGR$umi_per_CB.y), '\n')
+cat('Total UMI count coming for s1 and s2:',sum(dfGR$umi_per_CB_total), '\n')
+cat('\n')
+cat('For selected CB (full):')
+cat('\n')
+cat('Total UMI count coming for s1:', sum(DF_full$umi_per_CB.x), '\n')
+cat('Total UMI count coming for s2:',sum(DF_full$umi_per_CB.y), '\n')
+cat('Total UMI count coming for s1 and s2:',sum(DF_full$umi_per_CB_total), '\n')
+cat('\n')
+cat('For the all rejected CB:')
+cat('\n')
+cat('Total UMI count coming for s1:', sum(ED_rejected_in_all$umi_per_CB.x), '\n')
+cat('Total UMI count coming for s2:',sum(ED_rejected_in_all$umi_per_CB.y), '\n')
+cat('Total UMI count coming for s1 and s2:',sum(ED_rejected_in_all$umi_per_CB_total), '\n')
+cat('\n')
+
+cat('For rejected CB, with count > 100:')
+cat('\n')
+cat('Total UMI count coming for s1:', sum(DF_empty$umi_per_CB.x), '\n')
+cat('Total UMI count coming for s2:',sum(DF_empty$umi_per_CB.y), '\n')
+cat('Total UMI count coming for s1 and s2:',sum(DF_empty$umi_per_CB_total), '\n')
+cat('\n')
+```
+посмотрим как распределяютсяв общем количестве UMI, Пришедшие из каждого образца. Видим, что в "пустых" каплях общее количество UMI из первого образца "сравнивается" с  количеством UMI из второго, при этом количество UMI из 1 образца в хороших "непустых" каплях почти в три раза выше
+
+```{R}
+
+data <- tibble(
+    Category = c("For all CB", "For all CB", "For all CB",
+                 "For selected CB", "For selected CB", "For selected CB",
+                 "For the all rejected CB", "For the all rejected CB", "For the all rejected CB",
+                 "For rejected CB, with count > 100", "For rejected CB, with count > 100", "For rejected CB, with count > 100"),
+    UMI_Type = c("Total UMI count coming from s1", "Total UMI count coming from s2", "Total UMI count coming from s1 and s2",
+                 "Total UMI count coming from s1", "Total UMI count coming from s2", "Total UMI count coming from s1 and s2",
+                 "Total UMI count coming from s1", "Total UMI count coming from s2", "Total UMI count coming from s1 and s2",
+                 "Total UMI count coming from s1", "Total UMI count coming from s2", "Total UMI count coming from s1 and s2"),
+    UMI_Value = c(sum(dfGR$umi_per_CB.x), sum(dfGR$umi_per_CB.y), sum(dfGR$umi_per_CB_total),
+                  sum(DF_full$umi_per_CB.x), sum(DF_full$umi_per_CB.y), sum(DF_full$umi_per_CB_total),
+                  sum(ED_rejected_in_all$umi_per_CB.x), sum(ED_rejected_in_all$umi_per_CB.y), sum(ED_rejected_in_all$umi_per_CB_total),
+                  sum(DF_empty$umi_per_CB.x), sum(DF_empty$umi_per_CB.y), sum(DF_empty$umi_per_CB_total)
+    )
+)
+
+# Создаем столбчатую диаграмму
+ggplot(data, aes(x = Category, y = UMI_Value, fill = UMI_Type)) +
+    geom_bar(stat = "identity", position = "dodge", color = "black") +
+    labs(title = "UMI Counts by Category", x = "Category", y = "UMI Value") +
+    theme_minimal() +
+    theme(axis.text.x = element_text(angle = 45, hjust = 1))
+
+```
+Для большей наглядности, посмотрим как выглядит доля UMI, пришедших из каждого образца, в %. Для исходных данных и данных после фильтрации. Видим, что общее количество UMI из второго образца снижается в отобранных полных каплях и повышается в пустых.
+```{R}
+# Установка размера графика
+options(repr.plot.width=20, repr.plot.height=20)
+
+pie_chart <- function(data, title) {
+  values <- c(sum(data$umi_per_CB.x), sum(data$umi_per_CB.y))
+  labels <- c("fromS1", "fromS2")
+  colors <- c("#FF9999", "#66B2FF")  # Укажите свои предпочтительные цвета здесь
+  
+  # Построение круговой диаграммы с добавлением процентных значений и легенды
+  lbls <- paste(labels, round(100 * values / sum(values), 1), "%", sep=" ")
+  pie(values, labels = lbls, col = colors, main = title,  cex.main = 1)
+}
+
+# Установка колонок и строк для отображения диаграмм
+par(mfrow=c(2,2))
+pie_chart(dfGR, "All")
+pie_chart(DF_full, "Full")
+pie_chart(ED_rejected_in_all, "All_rejected")
+pie_chart(ED_rejected_in_all_more_than_100, "Rejected, UMI > 100")
+
+
+
+```
