@@ -1,0 +1,152 @@
+---
+title: "Analysis"
+author: "Shakir Suleimanov"
+date: "2024-03-26"
+output: 
+  html_document:
+    #css: styles.css
+    latex_engine : xelatex
+    df_print: default
+    highlight: zenburn
+    toc: TRUE
+    toc_depth: 4
+mainfont : NanumGothic    
+editor_options: 
+  markdown: 
+    wrap: 72
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+### Libs
+```{r message=FALSE, warning=FALSE, include=FALSE}
+source('Basic_metrics.R')
+```
+
+
+### Datapaths
+```{r paths, echo=TRUE, message=FALSE, warning=FALSE}
+counts <- c('../Data/3.STAR/Fixed_fresh_K562_noPEG_R1/Solo.out/GeneFull/raw/matrix.mtx',
+               '../Data/3.STAR/Fixed_fresh_K562_noPEG_R2/Solo.out/GeneFull/raw/matrix.mtx',
+               '../Data/3.STAR/Fixed_fresh_K562_PEG_R1/Solo.out/GeneFull/raw/matrix.mtx',
+               '../Data/3.STAR/Fixed_fresh_K562_PEG_R2/Solo.out/GeneFull/raw/matrix.mtx',
+               '../Data/3.STAR/Fixed_frozen_K562_noPEG_R1/Solo.out/GeneFull/raw/matrix.mtx',
+               '../Data/3.STAR/Fixed_frozen_K562_noPEG_R2/Solo.out/GeneFull/raw/matrix.mtx',
+               '../Data/3.STAR/Fixed_frozen_K562_PEG_R1/Solo.out/GeneFull/raw/matrix.mtx',
+               '../Data/3.STAR/Fixed_frozen_K562_PEG_R2/Solo.out/GeneFull/raw/matrix.mtx'
+               )
+
+genes <- c('/Users/suleymanov-ef/Desktop/Additional education/Bioinformatics Institute/Bioinformatics/Projects/Empty_drops/bi-kho2-2024/Data/3.STAR/Fixed_fresh_K562_noPEG_R1/Solo.out/GeneFull/raw/features.tsv',
+              '/Users/suleymanov-ef/Desktop/Additional education/Bioinformatics Institute/Bioinformatics/Projects/Empty_drops/bi-kho2-2024/Data/3.STAR/Fixed_fresh_K562_noPEG_R2/Solo.out/GeneFull/raw/features.tsv',
+              '/Users/suleymanov-ef/Desktop/Additional education/Bioinformatics Institute/Bioinformatics/Projects/Empty_drops/bi-kho2-2024/Data/3.STAR/Fixed_fresh_K562_PEG_R1/Solo.out/GeneFull/raw/features.tsv',
+              '/Users/suleymanov-ef/Desktop/Additional education/Bioinformatics Institute/Bioinformatics/Projects/Empty_drops/bi-kho2-2024/Data/3.STAR/Fixed_fresh_K562_PEG_R2/Solo.out/GeneFull/raw/features.tsv',
+              '/Users/suleymanov-ef/Desktop/Additional education/Bioinformatics Institute/Bioinformatics/Projects/Empty_drops/bi-kho2-2024/Data/3.STAR/Fixed_frozen_K562_noPEG_R1/Solo.out/GeneFull/raw/features.tsv',
+              '/Users/suleymanov-ef/Desktop/Additional education/Bioinformatics Institute/Bioinformatics/Projects/Empty_drops/bi-kho2-2024/Data/3.STAR/Fixed_frozen_K562_noPEG_R2/Solo.out/GeneFull/raw/features.tsv',
+              '/Users/suleymanov-ef/Desktop/Additional education/Bioinformatics Institute/Bioinformatics/Projects/Empty_drops/bi-kho2-2024/Data/3.STAR/Fixed_frozen_K562_PEG_R1/Solo.out/GeneFull/raw/features.tsv',
+              '/Users/suleymanov-ef/Desktop/Additional education/Bioinformatics Institute/Bioinformatics/Projects/Empty_drops/bi-kho2-2024/Data/3.STAR/Fixed_frozen_K562_PEG_R2/Solo.out/GeneFull/raw/features.tsv'
+              )
+
+barcodes <- c('/Users/suleymanov-ef/Desktop/Additional education/Bioinformatics Institute/Bioinformatics/Projects/Empty_drops/bi-kho2-2024/Data/3.STAR/Fixed_fresh_K562_noPEG_R1/Solo.out/GeneFull/raw/barcodes.tsv',
+              '/Users/suleymanov-ef/Desktop/Additional education/Bioinformatics Institute/Bioinformatics/Projects/Empty_drops/bi-kho2-2024/Data/3.STAR/Fixed_fresh_K562_noPEG_R2/Solo.out/GeneFull/raw/barcodes.tsv',
+              '/Users/suleymanov-ef/Desktop/Additional education/Bioinformatics Institute/Bioinformatics/Projects/Empty_drops/bi-kho2-2024/Data/3.STAR/Fixed_fresh_K562_PEG_R1/Solo.out/GeneFull/raw/barcodes.tsv',
+              '/Users/suleymanov-ef/Desktop/Additional education/Bioinformatics Institute/Bioinformatics/Projects/Empty_drops/bi-kho2-2024/Data/3.STAR/Fixed_fresh_K562_PEG_R2/Solo.out/GeneFull/raw/barcodes.tsv',
+              '/Users/suleymanov-ef/Desktop/Additional education/Bioinformatics Institute/Bioinformatics/Projects/Empty_drops/bi-kho2-2024/Data/3.STAR/Fixed_frozen_K562_noPEG_R1/Solo.out/GeneFull/raw/barcodes.tsv',
+              '/Users/suleymanov-ef/Desktop/Additional education/Bioinformatics Institute/Bioinformatics/Projects/Empty_drops/bi-kho2-2024/Data/3.STAR/Fixed_frozen_K562_noPEG_R2/Solo.out/GeneFull/raw/barcodes.tsv',
+              '/Users/suleymanov-ef/Desktop/Additional education/Bioinformatics Institute/Bioinformatics/Projects/Empty_drops/bi-kho2-2024/Data/3.STAR/Fixed_frozen_K562_PEG_R1/Solo.out/GeneFull/raw/barcodes.tsv',
+              '/Users/suleymanov-ef/Desktop/Additional education/Bioinformatics Institute/Bioinformatics/Projects/Empty_drops/bi-kho2-2024/Data/3.STAR/Fixed_frozen_K562_PEG_R2/Solo.out/GeneFull/raw/barcodes.tsv'
+              )
+
+filenames <- c('Fixed_fresh_K562_noPEG_R1',
+               'Fixed_fresh_K562_noPEG_R2',
+               'Fixed_fresh_K562_PEG_R1',
+               'Fixed_fresh_K562_PEG_R2',
+               'Fixed_frozen_K562_noPEG_R1',
+               'Fixed_frozen_K562_noPEG_R2',
+               'Fixed_frozen_K562_PEG_R1',
+               'Fixed_frozen_K562_PEG_R2'
+               )
+```
+
+### Two samples - no filtering
+```{r no filtering, echo=TRUE, fig.height=12, fig.width=14, message=FALSE, warning=FALSE}
+experiments_nf <- read_10X_samples(counts, barcodes, genes, 
+                                filenames, emptydrops_run = FALSE, fdr_threshold = 0.05)
+
+experiments_nf <- calculate_distributions(experiments_nf, 8)
+
+experiments_nf <- multinomial_testing(experiments_nf, 8, prob = calculate_sum_umi_by_samples(experiments_nf))
+
+pvals <- experiments_nf$non_filt_pvals
+
+kp1sample_nf <- knee_plot_sample_distribution(experiments_nf, 1, 0.05)
+kp2sample_nf <- knee_plot_sample_distribution(experiments_nf, 2, 0.05)
+intersect_plot <- plot_intersections(experiments_nf)
+bp_distributions <- plot_distributions_boxplots(experiments_nf$distributions, 2, 0.05)
+
+kp1sample_nf
+kp2sample_nf
+intersect_plot
+bp_distributions
+```
+
+### Two samples - filtering, multinomial test with P-values from non-filtered data
+```{r filtering1, echo=TRUE, fig.height=8, fig.width=14, message=FALSE, warning=FALSE}
+experiments_f1 <- read_10X_samples(counts, barcodes, genes, 
+                                filenames, emptydrops_run = TRUE, fdr_threshold = 0.05)
+
+experiments_f1 <- calculate_distributions(experiments_f1, 8)
+
+experiments_f1 <- assign_non_filt_pvals(experiments_f1, pvals)
+
+kp1sample_f1 <- knee_plot_sample_distribution(experiments_f1, 1, 0.05)
+kp2sample_f1 <- knee_plot_sample_distribution(experiments_f1, 2, 0.05)
+
+intersect_plot <- plot_intersections(experiments_f1)
+bp_distributions <- plot_distributions_boxplots(experiments_f1$distributions, 2, 0.25)
+
+kp1sample_f1
+kp2sample_f1
+kp3sample_f1
+kp4sample_f1
+kp5sample_f1
+kp6sample_f1
+kp7sample_f1
+kp8sample_f1
+intersect_plot
+bp_distributions
+```
+
+
+
+
+### Two samples - filtering, multinomial test with P(0.675)
+```{r filtering2, echo=TRUE, fig.height=8, fig.width=14, message=FALSE, warning=FALSE}
+experiments_f2 <- multinomial_testing(experiments_f1, 8, prob = calculate_sum_umi_by_samples(experiments_f1))
+
+kp1sample_f2 <- knee_plot_sample_distribution(experiments_f2, 1, 0.05)
+kp2sample_f2 <- knee_plot_sample_distribution(experiments_f2, 2, 0.05)
+kp3sample_f2 <- knee_plot_sample_distribution(experiments_f2, 3, 0.05)
+kp4sample_f2 <- knee_plot_sample_distribution(experiments_f2, 4, 0.05)
+kp5sample_f2 <- knee_plot_sample_distribution(experiments_f2, 5, 0.05)
+kp6sample_f2 <- knee_plot_sample_distribution(experiments_f2, 6, 0.05)
+kp7sample_f2 <- knee_plot_sample_distribution(experiments_f2, 7, 0.05)
+kp8sample_f2 <- knee_plot_sample_distribution(experiments_f2, 8, 0.05)
+
+intersect_plot <- plot_intersections(experiments_f2)
+bp_distributions <- plot_distributions_boxplots(experiments_f2$distributions, 8, 0.25)
+
+kp1sample_f2
+kp2sample_f2
+kp3sample_f2
+kp4sample_f2
+kp5sample_f2
+kp6sample_f2
+kp7sample_f2
+kp8sample_f2
+intersect_plot
+bp_distributions
+```
+
+
