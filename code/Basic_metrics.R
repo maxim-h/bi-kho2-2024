@@ -199,7 +199,7 @@ calculate_distributions <- function(experiments, number_of_samples){
 
 #----------------------------------------Binomial testing----------------------------------------------------------------------------------------------
   
-multinomial_testing <- function(experiments, number_of_samples){
+multinomial_testing <- function(experiments, number_of_samples,  prob = 0.5){
   
   #library(EMT)
     
@@ -379,28 +379,53 @@ plot_intersections <- function(counts_dataset_full, min_size=100){
 }
 
 
-knee_plot_sample_distribution <- function(distributions_dataset, sample, threshold = 0.05){
+knee_plot_sample_distribution <- function(experiments, sample, threshold = 0.05){
   
-  distributions_dataset[distributions_dataset == 0] <- NA
+  sample_number <- glue::glue('UMI_count_sample_{sample}')
   
-  distributions_dataset <- na.omit(distributions_dataset)
+  knee_plot_data <- cbind(experiments$counts[sample_number], experiments$distributions[sample_number], experiments$counts$p_val_adj)
   
-  distributions_dataset_kp <- distributions_dataset %>%
-    arrange(desc(distributions_dataset[, sample+1])) %>%
-    mutate(is_FDR_sign = as.factor(ifelse(p_val_adj < threshold, 'Sign', 'Unsign')))
+  colnames(knee_plot_data) <- c('UMI_count', 'UMI_count_distribution', 'P_val_adj')
+  
+  knee_plot_data <- knee_plot_data %>%
+    arrange(desc(UMI_count)) %>%
+    mutate(FDR_sign = ifelse(P_val_adj < threshold, 1, -1))
            
-  knee_plot <- ggplot(distributions_dataset_kp, aes(x = c(1:length(distributions_dataset_kp[, sample+1])), y = distributions_dataset_kp[, sample+1], color = is_FDR_sign, size = is_FDR_sign)) +
-     geom_point() +
-     theme_bw() +
-     ylab('UMI distribution') +
-     xlab('Barcodes, ranked by sum') +
-     theme(legend.position = "bottom") +
-     theme(legend.position = "bottom",
-           axis.text.x = element_text(angle = 45, vjust = 0.5, hjust=0.5)) +
-     scale_x_log10() +
-     scale_y_log10()
+  knee_plot <- ggplot(knee_plot_data, aes(x = c(1:nrow(knee_plot_data)), y = UMI_count, color = UMI_count_distribution)) +
+    geom_point(size=3) +
+    theme_bw() +
+    ylab('UMI distribution') +
+    #scale_color_continuous(type = "viridis") +
+    scale_color_gradientn(colors = c('#fde725','#5ec962', '#21918c', '#3b528b')) +
+    scale_x_log10(breaks=c(0, 10**round(log10(nrow(knee_plot_data))))) +
+    scale_y_log10() +
+    ggtitle(sample_number) +
+    theme(legend.position = "None",
+          axis.text.x=element_blank(), 
+          axis.ticks.x=element_blank(),
+          axis.title.x=element_blank(),
+          plot.title = element_text(hjust = 0.5))
+  
+  bar_plot <- ggplot(knee_plot_data, aes(x = c(1:nrow(knee_plot_data)), y = FDR_sign, color = UMI_count_distribution)) +
+    geom_bar(stat = 'identity') +
+    geom_hline(yintercept = 0) + 
+    theme_bw() +
+    xlab('Barcodes, ranked by sum') +
+    scale_color_gradientn(colors = c('#fde725','#5ec962', '#21918c', '#3b528b')) +
+    #scale_color_continuous(type='viridis') +
+    theme(legend.position = "bottom",
+          axis.text.x = element_text(angle = 45, vjust = 0.5, hjust=0.5),
+          axis.text.y=element_blank(), 
+          axis.ticks.y=element_blank()) +
+    scale_x_log10(breaks=c(0,10**round(log10(nrow(knee_plot_data)))))
+  
+  final_plot <- ggarrange(knee_plot,
+            bar_plot, 
+            nrow=2,
+            align='v',
+            heights = c(2,1))
 
-  return(knee_plot)
+  return(final_plot)
 }
 
 
