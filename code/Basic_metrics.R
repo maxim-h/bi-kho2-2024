@@ -199,7 +199,7 @@ calculate_distributions <- function(experiments, number_of_samples){
 
 #----------------------------------------Binomial testing----------------------------------------------------------------------------------------------
   
-multinomial_testing <- function(experiments, number_of_samples,  prob = 0.5){
+multinomial_testing <- function(experiments, number_of_samples,  probs = rep(1/number_of_samples, number_of_samples)){
   
   #library(EMT)
     
@@ -220,10 +220,10 @@ multinomial_testing <- function(experiments, number_of_samples,  prob = 0.5){
     # P-value adjustment for custom binomial test
     experiments$counts$p_val_adj <- p.adjust(experiments$counts$p_val, method='BH', n = length(experiments$counts$UMI_count_sample_1))
   } else {
-    probs <- rep(1/number_of_samples, number_of_samples)
     for (i in 1:length(experiments$counts$Barcodes)){
       values <- as.numeric(as.vector(select(experiments$counts, starts_with('UMI_'))[1, ]))
-      experiments$counts$p_val[i] <- EMT::multinomial.test(values, probs, MonteCarlo = TRUE)$p.value
+      #experiments$counts$p_val[i] <- EMT::multinomial.test(values, probs, MonteCarlo = TRUE)$p.value
+      experiments$counts$p_val[i] <- chisq.test(values, probs)$p.value
     }
     experiments$counts$p_val_adj <- p.adjust(experiments$counts$p_val, method='BH', n = length(experiments$counts$UMI_count_sample_1))
   }
@@ -366,9 +366,9 @@ plot_distributions_boxplots <- function(distributions_dataset, number_of_samples
 }
 
 
-plot_intersections <- function(counts_dataset_full, min_size=100){
+plot_intersections <- function(experiments, min_size=100){
   
-  test_upset_data <- counts_dataset_full %>%
+  test_upset_data <- experiments$counts_full %>%
     tibble::column_to_rownames(var = 'Barcodes') %>%
     select(starts_with('UMI_')) %>%
     mutate_if(is.numeric, ~1 * (. > 0)) 
@@ -411,13 +411,15 @@ knee_plot_sample_distribution <- function(experiments, sample, threshold = 0.05)
     geom_hline(yintercept = 0) + 
     theme_bw() +
     xlab('Barcodes, ranked by sum') +
+    ylab('FALSE/TRUE') +
     scale_color_gradientn(colors = c('#fde725','#5ec962', '#21918c', '#3b528b')) +
     #scale_color_continuous(type='viridis') +
     theme(legend.position = "bottom",
           axis.text.x = element_text(angle = 45, vjust = 0.5, hjust=0.5),
           axis.text.y=element_blank(), 
           axis.ticks.y=element_blank()) +
-    scale_x_log10(breaks=c(0,10**round(log10(nrow(knee_plot_data)))))
+    scale_x_log10(breaks=c(0,10**round(log10(nrow(knee_plot_data))))) +
+    scale_y_continuous(breaks = c(-1, 1))
   
   final_plot <- ggarrange(knee_plot,
             bar_plot, 
@@ -429,4 +431,7 @@ knee_plot_sample_distribution <- function(experiments, sample, threshold = 0.05)
 }
 
 
+calculate_sum_umi_by_samples <- function(experiments){
+  return(unlist(experiments$umi_sum) / sum(unlist(experiments$umi_sum)))
+}
 
