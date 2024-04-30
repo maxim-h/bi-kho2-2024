@@ -76,13 +76,13 @@ experiments_nf <- read_10X_samples(counts, barcodes, genes,
 
 experiments_nf <- calculate_distributions(experiments_nf, 8)
 
-experiments_nf <- multinomial_testing(experiments_nf, 8, prob = calculate_sum_umi_by_samples(experiments_nf))
+experiments_nf <- multinomial_testing(experiments_nf, 8, probs = calculate_sum_umi_by_samples(experiments_nf))
 
 pvals <- experiments_nf$non_filt_pvals
 
 kp1sample_nf <- knee_plot_sample_distribution(experiments_nf, 1, 0.05)
 kp2sample_nf <- knee_plot_sample_distribution(experiments_nf, 2, 0.05)
-intersect_plot <- plot_intersections(experiments_nf)
+intersect_plot <- plot_intersections(experiments_nf, min_size=2000)
 bp_distributions <- plot_distributions_boxplots(experiments_nf$distributions, 2, 0.05)
 
 kp1sample_nf
