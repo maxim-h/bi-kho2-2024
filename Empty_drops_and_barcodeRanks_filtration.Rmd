@@ -1,0 +1,412 @@
+---
+title: " Empty_Drop vs BarcodeRanks Filtration"
+author: "Maria"
+date: "2024-04-25"
+output:
+  html_document: default
+  pdf_document: default
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+Libraries
+
+```{r, libraries, echo=FALSE, warning=FALSE, message=FALSE}
+library(dplyr)
+library(Matrix)
+library(tibble)
+library(ggplot2)
+library(ggpubr)
+library(grid)
+library(gridExtra)
+library(viridis)
+library(RColorBrewer)
+library(DropletUtils)
+library(glue)
+```
+Определим функцию, которая  возвращает отсортированный по количеству UMI/CB датафрейм, полученный для суммарного количество UMI в двух(!) образцах 
+```{r, warning=FALSE}
+UMI_per_CB_sample_dist <- function(counts_path_s1, barcodes_path_s1, genes_path_s1, counts_path_s2, barcodes_path_s2, genes_path_s2){
+
+  #Read files
+  counts <- Matrix::readMM(counts_path_s1)
+  genes <- readr::read_tsv(genes_path_s1, col_names = FALSE)
+  gene_ids <- genes$X1
+  cell_ids <- readr::read_tsv(barcodes_path_s1, col_names = FALSE)$X1
+  
+  #Assign row and colnames
+  rownames(counts) <- gene_ids
+  colnames(counts) <- cell_ids
+  
+  #Calculate UMI per cell barcode distribution
+  umi_per_CB <- Matrix::colSums(counts)[Matrix::colSums(counts) > 0]
+  
+  #Calculate gene per cell barcode distribution
+  gene_per_CB <- Matrix::colSums(counts > 0)[Matrix::colSums(counts) > 0]
+  
+  
+  #Create sorted UMI_count DF
+  DF_umi_per_CB1 <- as.data.frame(umi_per_CB) %>%
+    arrange(desc(umi_per_CB)) %>%
+    mutate(cb = as.numeric(rownames(as.data.frame(umi_per_CB))))
+  
+  #Read files
+  counts <- Matrix::readMM(counts_path_s2)
+  genes <- readr::read_tsv(genes_path_s2, col_names = FALSE)
+  gene_ids <- genes$X1
+  cell_ids <- readr::read_tsv(barcodes_path_s2, col_names = FALSE)$X1
+  
+  #Assign row and colnames
+  rownames(counts) <- gene_ids
+  colnames(counts) <- cell_ids
+  
+  #Calculate UMI per cell barcode distribution
+  umi_per_CB <- Matrix::colSums(counts)[Matrix::colSums(counts) > 0]
+  
+  #Calculate gene per cell barcode distribution
+  gene_per_CB <- Matrix::colSums(counts > 0)[Matrix::colSums(counts) > 0]
+  
+  
+  #Create sorted UMI_count DF
+  DF_umi_per_CB2 <- as.data.frame(umi_per_CB) %>%
+    arrange(desc(umi_per_CB)) %>%
+    mutate(cb = as.numeric(rownames(as.data.frame(umi_per_CB))))
+  
+  
+  DF_umi_per_CB_s1_s2_sort <- merge(DF_umi_per_CB1, DF_umi_per_CB2, 
+                               by = 'row.names', all = TRUE)
+  #DF_only_common <- merge(DF_umi_per_CB1, DF_umi_per_CB2, 
+  #                by = 'row.names', all = FALSE)
+  #Replcase NA's with 0
+  DF_umi_per_CB_s1_s2_sort[is.na(DF_umi_per_CB_s1_s2_sort)] <- 0
+  
+  #Calculate distribution
+  DF_umi_per_CB_s1_s2_sort <- DF_umi_per_CB_s1_s2_sort %>%
+    mutate(dist_s1 = round(umi_per_CB.x/(umi_per_CB.x + umi_per_CB.y),6)) %>%
+    mutate(dist_s2 = round(umi_per_CB.y/(umi_per_CB.x + umi_per_CB.y),6))
+  
+  #DF_for_knee_s1 <-subset(DF_umi_per_CB_s1_s2_sort, dist_s1 > 0)
+  #DF_for_knee_s2 <-subset(DF_umi_per_CB_s1_s2_sort, dist_s2 > 0)
+  
+  DF_all <- DF_umi_per_CB_s1_s2_sort %>%
+    mutate(dist_s1 = round(umi_per_CB.x/(umi_per_CB.x + umi_per_CB.y),6)) %>%
+    mutate(dist_s2 = round(umi_per_CB.y/(umi_per_CB.x + umi_per_CB.y),6))%>%
+    mutate(umi_per_CB_total = umi_per_CB.y + umi_per_CB.x)
+  DF_all_sorted <- as.data.frame(DF_all) %>%
+    arrange(desc(DF_all$umi_per_CB_total))
+  DF_all_sorted <- as.data.frame(DF_all_sorted) %>%
+    mutate(common_CB_number = as.numeric(rownames(as.data.frame(DF_all_sorted))))
+  #пока уберу, так как я тут готовлю только суммарный DF, где включены, в том числе 0 для каждого
+  #DF_only_common_sorted <-subset(DF_all_sorted, dist_s1 > 0)
+  #DF_only_common_sorted <-subset(DF_only_common_sorted, dist_s1 < 1)
+  return (DF_all_sorted)
+}
+```
+Теперь определим фуункцию, которая будет строить knee_plot и  раскрашивать его в зависимость от того, какая доля UMI пришла в суммарный датасет из первого образца
+Ппринимает на вход датафрейм,  и название графика
+В df должны быть следующие колонки:
+*common_CB_number* номер баркода  из суммарного для двух образцов df отсортированного по общему количеству UMI/CB
+*umi_per_CB* количество UMI для этого баркода в  ДВУХ образце 1
+*dist_s1*  - отношение количества UMI для этого баркода в образце 1 к количеству всех UMI для этого баркода и имя образца
+```{R}
+knee_plot_UMI_sample_dist <- function(df, name){
+  colors <- brewer.pal(n = 11, name = "Spectral")
+  knee_plot_UMI_sample_dist <- ggplot(df, aes(x = common_CB_number, y = umi_per_CB_total, colour = dist_s1)) +
+    geom_point(size = 1) +
+    labs(y = 'UMI count, log10', x = 'cell barcodes, log10') +
+    theme_linedraw() +
+    theme(axis.text=element_text(size=14),
+          axis.title=element_text(size=16,face="bold")) +
+    scale_x_log10() +
+    scale_y_log10() +
+    scale_colour_gradientn(colours = colors,
+                           guide = guide_colorbar(title = "UMIs from Sample1"))+
+    ggtitle(name)
+  return (knee_plot_UMI_sample_dist)
+}
+```
+Напишем функцию для фильтрования баркодов из сырой матрицы при помощи EmptyDrops
+Принимает на вход:
+*sparse_matrix* матрица,
+*lower* = 100 порог отсечки,
+*test.ambient* = TRUE
+
+```{R, warning=FALSE}
+
+filter_barcodes_with_emptyDrops <- function(sparse_matrix, lower = 100, test.ambient = TRUE) {
+  emptyDrops_df = emptyDrops(sparse_matrix, lower = lower, test.ambient = test.ambient)
+  emptyDrops_df$FDR[is.na(emptyDrops_df$FDR)] <- 1 # выставляю всем NA FDR единичку
+  return(emptyDrops_df)
+}
+
+return_filtered_barcodes_or_indeces <- function(emptyDrops_df, fdr_threshold = 0.05, return_indeces = FALSE) {
+  filtered_barcodes_indeces <- which(emptyDrops_df$FDR < fdr_threshold) #список со всеми отфильтр. баркодами
+  
+  if (return_indeces) {
+    return(filtered_barcodes_indeces)
+  }
+  return(rownames(emptyDrops_df)[filtered_barcodes_indeces])
+}
+```
+Проведем фильтрацию для каждого из двух образцов Solo1 и Solo2
+
+Чтение данных solo1
+```{R matrices,  warning=FALSE, , message=FALSE}
+path_to_matrix <- "C:/Maria/IB/metrics/Data/Solo.out_1/Gene/raw/matrix.mtx.gz"
+path_to_barcodes <- "C:/Maria/IB/metrics/Data/Solo.out_1/Gene/raw/barcodes.tsv.gz"
+matrix_1_raw <- readMM(path_to_matrix)
+cell_ids <- readr::read_tsv(path_to_barcodes, col_names = FALSE)$X1
+colnames(matrix_1_raw) <- cell_ids
+```
+
+Запуск emptyDrops solo1 и получение списка выбранных баркодов
+```{R}
+emptyDrops_df_1 <- filter_barcodes_with_emptyDrops(matrix_1_raw)
+filtered_barcodes1 <- return_filtered_barcodes_or_indeces(emptyDrops_df_1, fdr_threshold = 0.05) #список со всеми отфильтр. баркодами
+#filtered_barcodes_indeces <- return_filtered_barcodes_or_indeces(emptyDrops_df_1, fdr_threshold = 0.05, return_indeces = TRUE) #список со всеми индексами отфильтр. баркодов
+```
+
+```{R, barcode_ranks}
+sce_1 <- read10xCounts('C:/Maria/IB/metrics/Data/Solo.out_1/Gene/raw', type = 'sparse')
+br.out_1 <- barcodeRanks(assays(sce_1)$counts)
+knee_solo1 <-  br.out_1@metadata$knee
+inflection_solo1 <-  br.out_1@metadata$inflection
+print('Number of UMIs for  knee_point')
+print(knee_solo1)
+print('Number of UMIs for inflection_point')
+print(inflection_solo1)
+
+```
+Чтение данных solo2
+```{R, warning=FALSE, message=FALSE}
+path_to_matrix <- "C:/Maria/IB/metrics/Data/Solo.out_2/Gene/raw/matrix.mtx.gz"
+path_to_barcodes <- "C:/Maria/IB/metrics/Data/Solo.out_2/Gene/raw/barcodes.tsv.gz"
+matrix_2_raw <- readMM(path_to_matrix)
+cell_ids <- readr::read_tsv(path_to_barcodes, col_names = FALSE)$X1
+colnames(matrix_2_raw) <- cell_ids
+```
+
+Запуск emptyDrops solo2 и  и получение списка выбранных баркодов
+
+```{R}
+emptyDrops_df_2 <- filter_barcodes_with_emptyDrops(matrix_2_raw)
+#emptyDrops_df_2
+filtered_barcodes2 <- return_filtered_barcodes_or_indeces(emptyDrops_df_2, fdr_threshold = 0.05) #список со всеми отфильтр. баркодами
+
+```
+
+```{R, barcode_ranks, solo2}
+sce_2 <- read10xCounts('C:/Maria/IB/metrics/Data/Solo.out_2/Gene/raw', type = 'sparse')
+br.out_2 <- barcodeRanks(assays(sce_2)$counts)
+knee_solo2 <-  br.out_2@metadata$knee
+inflection_solo2 <-  br.out_2@metadata$inflection
+print('Number of UMIs for  knee_point')
+print(knee_solo2)
+print('Number of UMIs for inflection_point')
+print(inflection_solo2)
+
+```
+Получили около 4000 СВ отобранный для Solo1 (из 55501), и меньше тысячи для Solo2 (из 37628). Отбирали n>100, fdr_threshold = 0.05
+посмотрим, какие из них общие, а сколько получается суммарно для двух образцов
+
+```{R}
+filtered_barcodes_common <- intersect(filtered_barcodes1, filtered_barcodes2)
+print('common:')
+print(length(filtered_barcodes_common))
+print('from 1 or 2:')
+filtered_barcodes <- unique(c(filtered_barcodes1, filtered_barcodes2))
+print(length(filtered_barcodes))
+```
+видим, что, в одном из вариантов расчета,  731 баркод (из 4170 и 960) был отобран из каждого из двух образцов, суммарно для двух образцов выбрано разных 4399 (данные меняются, так как есть этап рандомайза из-за использования метода Монте-Карло)
+
+Теперь получим датафрейм для двух образцов Solo1 и Solo2, в котором будут посчитано сумманое количество UMI и доля, пришедшая из каждого образца
+```{R, warning=FALSE, message=FALSE}
+#-----------------------------------------------------Solo1_raw
+
+counts_path_s1 <- ("C:/Maria/IB/metrics/Data/Solo.out_1/Gene/raw/matrix.mtx.gz")
+genes_path_s1 <- ("C:/Maria/IB/metrics/Data/Solo.out_1/Gene/raw/features.tsv.gz")
+barcodes_path_s1 <- ("C:/Maria/IB/metrics/Data/Solo.out_1/Gene/raw/barcodes.tsv.gz")
+
+#-----------------------------------------------------Solo2_raw
+counts_path_s2 <- ("C:/Maria/IB/metrics/Data/Solo.out_2/Gene/raw/matrix.mtx.gz")
+genes_path_s2 <- ("C:/Maria/IB/metrics/Data/Solo.out_2/Gene/raw/features.tsv.gz")
+barcodes_path_s2 <- ("C:/Maria/IB/metrics/Data/Solo.out_2/Gene/raw/barcodes.tsv.gz")
+
+dfGR <- UMI_per_CB_sample_dist(counts_path_s1, barcodes_path_s1, genes_path_s1, counts_path_s2, barcodes_path_s2, genes_path_s2)
+```
+Найдем в суммарных данных для Solo1 и Solo2 те CB, которые были выбраны ED для Solo1 и Solo2, и те, которые были забракованы
+Получается  примерно 4350 СВ отобраны по двум образцам, при этом 3480 содержат > 100 UMI, но не были выбраны ED (тут еще можно посмотреть, наверное, какие не были выбраны из 1, и из 2 отдельно)
+```{R}
+ED_in_all <-  subset(dfGR, Row.names %in% filtered_barcodes)
+ED_rejected_in_all <-  subset(dfGR, !(Row.names %in% filtered_barcodes))
+ED_rejected_in_all_more_than_100 <- subset(ED_rejected_in_all, (ED_rejected_in_all$umi_per_CB.x > 100 | ED_rejected_in_all$umi_per_CB.y > 100 )) 
+ED_rejected_in_all_more_than_100_solo20 <- subset(ED_rejected_in_all_more_than_100, ED_rejected_in_all_more_than_100$umi_per_CB.y == 0)
+ED_rejected_in_all_more_than_100_solo10 <- subset(ED_rejected_in_all_more_than_100, ED_rejected_in_all_more_than_100$umi_per_CB.x == 0)
+#ED_result_filtered <- subset(dfGF, Row.names %in% filtered_barcodes)
+#dif_ED_result_filtered <- subset(dfGF, !(Row.names %in% filtered_barcodes))
+```
+Посчитаем, что останется, если применить BarcodRanks две разные отсечки knee_point, и inflection
+```{R}
+
+BR_in_all_knee_point <-  subset(dfGR, (dfGR$umi_per_CB.x > 4898 | dfGR$umi_per_CB.y > 3265 ))
+BR_in_all_inflection <-  subset(dfGR, (dfGR$umi_per_CB.x > 843 | dfGR$umi_per_CB.y > 512 ))
+
+# в первом образце
+BR_in_all_knee_point_Solo1 <-  subset(dfGR, (dfGR$umi_per_CB.x > 4898  ))
+BR_in_all_inflection_Solo1 <-  subset(dfGR, (dfGR$umi_per_CB.x > 843  ))
+# во втором
+BR_in_all_knee_point_Solo2 <-  subset(dfGR, (dfGR$umi_per_CB.y > 3265 ))
+BR_in_all_inflection_Solo2 <-  subset(dfGR, (dfGR$umi_per_CB.y > 512 ))
+
+```
+Посмотрим, что из отобранного с помощью BR, так же отбирается с помощью ED, а что нет
+```{R}
+BR_and_ED_knee_point <-  subset(BR_in_all_knee_point, Row.names %in% filtered_barcodes)
+BR_and_ED_inflection <-  subset(BR_in_all_inflection, Row.names %in% filtered_barcodes)
+BR_not_ED_inflection <-  subset(BR_in_all_inflection, Row.names %in% filtered_barcodes)
+
+```
+И сделаем наоборот, посмотрим, что из отобранного ED, забирает BR, прост опроверяю, что нигде не напутала
+```{R}
+ED_and_BR_knee_point <-  subset(ED_in_all, (ED_in_all$umi_per_CB.x > 4898 | ED_in_all$umi_per_CB.y > 3265 ))
+ED_and_BR_inflection <-  subset(ED_in_all, (ED_in_all$umi_per_CB.x > 843 | ED_in_all$umi_per_CB.y > 512 ))
+
+```
+Посмотрим, что прошло выше отсечки inflection в BR, Но было забраковано ED
+```{R}
+BR_not_ED_inflection <-  subset(BR_in_all_inflection, !(Row.names %in% filtered_barcodes))
+```
+
+```{R}
+ED_not_BR_inflection <- subset(ED_in_all, !(Row.names %in% BR_in_all_inflection$Row.names))
+```
+Вот теперь будем сравнивать 2 набора. Оба *отобраны BR*, и при этом 1 прошли фильтрацию ED (not_empty), а другие нет (empty).
+
+
+Если брать в качестве отсечки inflection, то ED также отбирает все эти 451 баркод
+Если же мы берем knee-point,то из 1511 отобранных с помощью BR, проходят контроль с помощью ED только 1122.  И 389 не отбирает. Посмотрим на то как они распределены между образцами, и на оставшиеся "за бортом" ED
+Еще можно посмотреть на те, что отобраны ED, но не прошли отсечку BR
+```{R}
+empty <- BR_not_ED_inflection 
+not_empty <- BR_and_ED_inflection 
+not_empty_not_BR <- ED_not_BR_inflection 
+
+```
+Перемешаем строки в датафреймах, чтобы при построении графиков, когда будут накладываться точки, на передний план выходили случайные
+```{R}
+empty <- empty[sample(nrow(empty)), ]
+not_empty <- not_empty[sample(nrow(not_empty)), ] 
+not_empty_not_BR <- not_empty_not_BR[sample(nrow(not_empty_not_BR)), ] 
+
+```
+Запись результатов в CSV
+```{R, echo = FALSE}
+#write.csv(ED_result, file = "common_gene_row_ED_filtered.csv", row.names = TRUE)
+#write.csv(ED_result_filtered, file = "common_gene_filtered_ED_filtered.csv", row.names = TRUE)
+#write.csv(dif_ED_result_filtered, file = "common_gene_filtered_not_in_ED_filered.csv", row.names = TRUE)
+```
+
+Построим knee plot с окраской по доле пришедших из Solo1 для 'непустых'
+```{R}
+plot_not_empty <- knee_plot_UMI_sample_dist(not_empty, 'ED-yes and BR-yes')
+plot_not_empty
+file_path <- "ED-yes and BR-yes.png"
+
+# Сохраните plotGR в формате PNG
+ggsave(file = file_path, plot = plot_not_empty, width = 8, height = 6, units = "in", dpi = 300)
+```
+Построим аналогичный knee_plot для 'пустых'
+```{R}
+plot_empty <- knee_plot_UMI_sample_dist(empty, 'ED-no and BR-yes')
+plot_empty
+file_path <- "ED-no and BR-yes.png"
+ggsave(file = file_path, plot = plot_empty, width = 8, height = 6, units = "in", dpi = 300)
+```
+
+И построим те, которые  были выбраны Empty_Drops, но в которых меньше UMI, чем отсечка BR
+```{R}
+
+plot_not_empty_not_ranked <- knee_plot_UMI_sample_dist(not_empty_not_BR, 'ED-yes and BR-no')
+plot_not_empty_not_ranked
+file_path <- "ED-yes and BR-no.png"
+ggsave(file = file_path, plot = plot_not_empty_not_ranked, width = 8, height = 6, units = "in", dpi = 300)
+
+```
+
+
+```{R}
+DF_full <- ED_result_shuffled
+DF_empty <- ED_rejected_in_all_more_than_100_shuffled
+
+```
+сначала посмотрим просто на средние значения UMI/CB в фильтрованных/нефильтрованных данных
+```{R}
+mean_all <- mean(dfGR_common$umi_per_CB_total)
+mean_all_1 <- mean(dfGR_common$umi_per_CB.x)
+mean_all_2 <- mean(dfGR_common$umi_per_CB.y)
+mean_empty <- mean(empty$umi_per_CB_total)
+mean_not_empty <- mean(not_empty$umi_per_CB_total)
+mean_empty_1 <- mean(empty$umi_per_CB.x)
+mean_not_empty_1 <- mean(not_empty$umi_per_CB.x)
+mean_empty_2 <- mean(empty$umi_per_CB.y)
+mean_not_empty_2 <- mean(not_empty$umi_per_CB.y)
+
+# Построение графика
+barplot(c(mean_all, mean_all_1, mean_all_2), names.arg = c('all', 'all s1', 'all s2'), col = c('pink', 'magenta','magenta'),
+        main = "Сравнение средних значений для UMI/CB для исходных данных", ylab = "Среднее значение")
+```
+
+```{R}
+barplot(c( mean_not_empty, mean_empty, mean_not_empty_1, mean_empty_1, mean_not_empty_2, mean_empty_2), names.arg = c( "full", "empty", "full,s1", "empty,s1", "full, s2", "empty, s2"), col = c( "skyblue", "lightgreen", "skyblue", "lightgreen", "skyblue", "lightgreen"),
+        main = "Сравнение средних значений для UMI/CB для фильтрованных данных", ylab = "Среднее значение")
+```
+
+Попробуем построить распределение по UMI/CB
+
+```{R}
+data_list <- list(not_empty$umi_per_CB_total, empty$umi_per_CB_total,
+                  not_empty$umi_per_CB.x, empty$umi_per_CB.x,
+                  not_empty$umi_per_CB.y, empty$umi_per_CB.y)
+
+names(data_list) <- c("ED_yes", "ED_no",
+                      "ED_yes_1", "ED_no_1",
+                      "ED_yes_2", "ED_no_2")
+
+# Построение боксплотов с усами
+boxplot(data_list, col = rainbow(6), notch = FALSE, 
+        main = "Сравнение средних значений UMI/CB, BR > inflection",
+        ylab = "Значение", names = names(data_list))
+
+# Вывод средних значений в качестве точек на графике
+means <- sapply(data_list, mean)
+points(1:6, means, col = "red", pch = 19)
+text(1:6, means, labels = round(means, 2), pos = 3, col = "red")
+```
+
+
+Для большей наглядности, посмотрим как выглядит суииарная доля UMI, пришедших из каждого образца, в %. Для исходных данных и данных после фильтрации. Видим, что общее количество UMI из второго образца снижается в отобранных полных каплях и повышается в пустых.
+```{R}
+# Установка размера графика
+options(repr.plot.width=40, repr.plot.height=40)
+
+pie_chart <- function(data, title) {
+  values <- c(sum(data$umi_per_CB.x), sum(data$umi_per_CB.y))
+  labels <- c("fromS1", "fromS2")
+  colors <- c("#FF9999", "#66B2FF")  # Укажите свои предпочтительные цвета здесь
+  
+  # Построение круговой диаграммы с добавлением процентных значений и легенды
+  lbls <- paste(labels, round(100 * values / sum(values), 1), "%", sep=" ")
+  pie(values, labels = lbls, col = colors, main = title,  cex.main = 1)
+}
+
+# Установка колонок и строк для отображения диаграмм
+par(mfrow=c(2,2))
+pie_chart(dfGR, "All CB")
+pie_chart(empty, "ED_no + BR_yes")
+pie_chart(not_empty, "ED_yes + BR_yes")
+pie_chart(ED_rejected_in_all, "ED_yes + BR_no")
+
+
+
+```
