@@ -1,0 +1,240 @@
+---
+title: "Distances between EmptyDrops and non_empty drops in sample 2"
+author: "Shakir Suleimanov"
+date: "2024-03-26"
+output: 
+  html_document:
+    #css: styles.css
+    latex_engine : xelatex
+    df_print: default
+    highlight: zenburn
+    toc: TRUE
+    toc_depth: 4
+mainfont : NanumGothic    
+editor_options: 
+  markdown: 
+    wrap: 72
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+### Libs
+```{r message=FALSE, warning=FALSE, include=FALSE}
+source('Basic_metrics.R')
+```
+
+### Datapaths
+```{r paths, echo=TRUE, message=FALSE, warning=FALSE}
+counts <- c('../Data/Solo.out_1/Gene/raw/matrix.mtx.gz',
+            '../Data/Solo.out_2/Gene/raw/matrix.mtx.gz')
+
+genes <- c('../Data/Solo.out_1/Gene/raw/features.tsv.gz',
+           '../Data/Solo.out_2/Gene/raw/features.tsv.gz')
+
+barcodes <- c('../Data/Solo.out_1/Gene/raw/barcodes.tsv.gz',
+              '../Data/Solo.out_2/Gene/raw/barcodes.tsv.gz')
+
+filenames <- c('Solo1', 'Solo2')
+```
+
+
+### Read data from sample1
+```{r}
+sc_sample_2 <- sc_matrix_10X(counts[2], barcodes[2], genes[2], filenames[2])
+```
+
+
+### Get barcodes which pass the EmptyDrops filtering
+```{r}
+empty_drops_df_sample_2 <- filter_barcodes_with_emptyDrops(sc_sample_2)
+
+not_empty_barcodes_sample_2 <- return_filtered_barcodes_or_indices(empty_drops_df_sample_2)
+```
+
+
+### Read list with highly variable genes
+```{r}
+source('top300_highly_variable_genes_sample2.R')
+```
+
+
+### EmptyDrops averaged expression profile
+```{r}
+sc_sample_2_emptyDrops <- sc_sample_2[,Matrix::colSums(sc_sample_2) <= 100 & Matrix::colSums(sc_sample_2) > 0]
+emptyDrops_expression_profile <- rowSums(sc_sample_2_emptyDrops)/sc_sample_2_emptyDrops@Dim[2]
+emptyDrops_expression_profile <- emptyDrops_expression_profile[names(emptyDrops_expression_profile) %in% top300_highly_variable_genes_sample_2]
+```
+
+
+### Datasets to compare with EmptyDrops
+```{r}
+### Over 1000
+sc_sample_2_over_1000 <- sc_sample_2[, Matrix::colSums(sc_sample_2) > 1000]
+sc_sample_2_over_1000_top_300_variable_genes_expression_profile <- sc_sample_2_over_1000[sc_sample_2_over_1000@Dimnames[[1]] %in% top300_highly_variable_genes_sample_2, ]
+
+### Over 3000
+sc_sample_2_over_3000 <- sc_sample_2[, Matrix::colSums(sc_sample_2) > 3000]
+sc_sample_2_over_3000_top_300_variable_genes_expression_profile <- sc_sample_2_over_3000[sc_sample_2_over_3000@Dimnames[[1]] %in% top300_highly_variable_genes_sample_2, ]
+
+### Over 100-1000
+sc_sample_2_over_100 <- sc_sample_2[,Matrix::colSums(sc_sample_2) > 100]
+sc_sample_2_over_100_top_300_variable_genes_expression_profile <- sc_sample_2_over_100[sc_sample_2_over_100@Dimnames[[1]] %in% top300_highly_variable_genes_sample_2, ]
+```
+
+
+### Calculate correlations between cells and EmptyDrops profile of 300top_highly_variable genes expression
+```{r warning=FALSE}
+cor_dist_sc_sample_2_over_100 <- calculate_distances(sc_sample_2_over_100_top_300_variable_genes_expression_profile, emptyDrops_expression_profile, euclidean = FALSE)
+
+cor_dist_sc_sample_2_over_1000 <- calculate_distances(sc_sample_2_over_1000_top_300_variable_genes_expression_profile, emptyDrops_expression_profile, euclidean = FALSE)
+
+cor_dist_sc_sample_2_over_3000 <- calculate_distances(sc_sample_2_over_3000_top_300_variable_genes_expression_profile, emptyDrops_expression_profile, euclidean = FALSE)
+```
+
+
+### Calculate euclidean distances between cells and EmptyDrops profile of 300top_highly_variable genes expression
+```{r warning=FALSE}
+eucl_dist_sc_sample_2_over_100 <- calculate_distances(sc_sample_2_over_100_top_300_variable_genes_expression_profile, emptyDrops_expression_profile, euclidean = TRUE)
+
+eucl_dist_sc_sample_2_over_1000 <- calculate_distances(sc_sample_2_over_1000_top_300_variable_genes_expression_profile, emptyDrops_expression_profile, euclidean = TRUE)
+
+eucl_dist_sc_sample_2_over_3000 <- calculate_distances(sc_sample_2_over_3000_top_300_variable_genes_expression_profile, emptyDrops_expression_profile, euclidean = TRUE)
+```
+
+
+### Normalize euclidean distances from 0 to 1
+```{r warning=FALSE}
+colnames(eucl_dist_sc_sample_2_over_100) <- c('Distance')
+eucl_dist_sc_sample_2_over_100 <- eucl_dist_sc_sample_2_over_100 %>%
+  mutate(Distance = (Distance - min(Distance))/(max(Distance) - min(Distance)))
+
+colnames(eucl_dist_sc_sample_2_over_1000) <- c('Distance')
+eucl_dist_sc_sample_2_over_1000 <- eucl_dist_sc_sample_2_over_1000 %>%
+  mutate(Distance = (Distance - min(Distance))/(max(Distance) - min(Distance)))
+
+colnames(eucl_dist_sc_sample_2_over_3000) <- c('Distance')
+eucl_dist_sc_sample_2_over_3000 <- eucl_dist_sc_sample_2_over_3000 %>%
+  mutate(Distance = (Distance - min(Distance))/(max(Distance) - min(Distance)))
+```
+
+
+#Create dataset with correlation values for knee_plot
+```{r}
+data_with_cor_dist_for_plot_sc_sample_2_over_100 <- merge_barcodes_counts_and_distances(sc_sample_2_over_100, cor_dist_sc_sample_2_over_100)
+data_with_cor_dist_for_plot_sc_sample_2_over_1000 <- merge_barcodes_counts_and_distances(sc_sample_2_over_1000, cor_dist_sc_sample_2_over_1000)
+data_with_cor_dist_for_plot_sc_sample_2_over_3000 <- merge_barcodes_counts_and_distances(sc_sample_2_over_3000, cor_dist_sc_sample_2_over_3000)
+```
+
+
+#Create dataset with euclidean distance values for knee_plot
+```{r}
+data_with_eucl_dist_for_plot_sc_sample_2_over_100 <- merge_barcodes_counts_and_distances(sc_sample_2_over_100, eucl_dist_sc_sample_2_over_100)
+data_with_eucl_dist_for_plot_sc_sample_2_over_1000 <- merge_barcodes_counts_and_distances(sc_sample_2_over_1000, eucl_dist_sc_sample_2_over_1000)
+data_with_eucl_dist_for_plot_sc_sample_2_over_3000 <- merge_barcodes_counts_and_distances(sc_sample_2_over_3000, eucl_dist_sc_sample_2_over_3000)
+```
+
+
+# Plot knee_plot for cells with UM_count over 100 - correlation distance
+```{r fig.height=10, fig.width=10}
+knee_plot_with_distances(data_with_cor_dist_for_plot_sc_sample_2_over_100, not_empty_barcodes_sample_2)
+```
+
+
+# Plot knee_plot for cells with UM_count over 1000 - correlation distance
+```{r fig.height=10, fig.width=10}
+knee_plot_with_distances(data_with_cor_dist_for_plot_sc_sample_2_over_1000, not_empty_barcodes_sample_2)
+```
+
+
+# Plot knee_plot for cells with UM_count over 3000 - correlation distance
+```{r fig.height=10, fig.width=10}
+knee_plot_with_distances(data_with_cor_dist_for_plot_sc_sample_2_over_3000, not_empty_barcodes_sample_2)
+```
+
+# Calculate correlation coefficients between UMI_counts and distance (correlation) for dataset with cell (over 100, over 1000 and over 3000)
+```{r}
+cor(data_with_cor_dist_for_plot_sc_sample_2_over_100$UMI_count, data_with_cor_dist_for_plot_sc_sample_2_over_100$Distance, method = 'spearman', use='pairwise.complete.obs')
+cor(data_with_cor_dist_for_plot_sc_sample_2_over_1000$UMI_count, data_with_cor_dist_for_plot_sc_sample_2_over_1000$Distance, method = 'spearman')
+cor(data_with_cor_dist_for_plot_sc_sample_2_over_3000$UMI_count, data_with_cor_dist_for_plot_sc_sample_2_over_3000$Distance, method = 'spearman')
+```
+
+
+# Plot knee_plot for cells with UM_count over 100 - normalized euclidean distance
+```{r fig.height=10, fig.width=10}
+knee_plot_with_distances(data_with_eucl_dist_for_plot_sc_sample_2_over_100, not_empty_barcodes_sample_2)
+```
+
+
+# Plot knee_plot for cells with UM_count over 1000 - normalized euclidean distance
+```{r fig.height=10, fig.width=10}
+knee_plot_with_distances(data_with_eucl_dist_for_plot_sc_sample_2_over_1000, not_empty_barcodes_sample_2)
+```
+
+
+# Plot knee_plot for cells with UM_count over 3000 - normalized euclidean distance
+```{r fig.height=10, fig.width=10}
+knee_plot_with_distances(data_with_eucl_dist_for_plot_sc_sample_2_over_3000, not_empty_barcodes_sample_2)
+```
+
+
+# Calculate correlation coefficients between UMI_counts and distance (euclidean) for dataset with cell (over 100, over 1000 and over 3000)
+```{r}
+cor(data_with_eucl_dist_for_plot_sc_sample_2_over_100$UMI_count, data_with_eucl_dist_for_plot_sc_sample_2_over_100$Distance, method = 'spearman', use='pairwise.complete.obs')
+cor(data_with_eucl_dist_for_plot_sc_sample_2_over_1000$UMI_count, data_with_eucl_dist_for_plot_sc_sample_2_over_1000$Distance, method = 'spearman')
+cor(data_with_eucl_dist_for_plot_sc_sample_2_over_3000$UMI_count, data_with_eucl_dist_for_plot_sc_sample_2_over_3000$Distance, method = 'spearman')
+```
+
+
+# Comparison of correlation distance between cells assigned as Empty or Not-Empty by EmptyDrops from the subset of barcodes with UMI_count over 100
+```{r fig.height=15, fig.width=15}
+compare_empty_and_not_emptyDrops_by_cor_distance <- data_with_cor_dist_for_plot_sc_sample_2_over_100 %>%
+  mutate(EmptyDrops = as.factor(ifelse(Barcodes %in% not_empty_barcodes_sample_2, 'Not empty', 'Empty')))
+ggplot(compare_empty_and_not_emptyDrops_by_cor_distance, aes(x = EmptyDrops, y = Distance)) +
+  geom_violin() +
+  geom_boxplot(width=0.3, aes(fill = EmptyDrops)) +
+  theme_bw() +
+  stat_compare_means(method = "t.test") +
+  ggtitle('Comparison of correlation distance between cells assigned as Empty or Not-Empty by EmptyDrops from the subset of barcodes with UMI_count over 100') +
+  theme(plot.title = element_text(size = 18, hjust=0.5),
+        axis.text.x = element_text(size = 14),
+        axis.text.y = element_text(size = 14))
+```
+
+
+# Recalculate non-normalized euclidean distances
+```{r warning=FALSE}
+eucl_dist_sc_sample_2_over_100 <- calculate_distances(sc_sample_2_over_100_top_300_variable_genes_expression_profile, emptyDrops_expression_profile, euclidean = TRUE)
+
+eucl_dist_sc_sample_2_over_1000 <- calculate_distances(sc_sample_2_over_1000_top_300_variable_genes_expression_profile, emptyDrops_expression_profile, euclidean = TRUE)
+
+eucl_dist_sc_sample_2_over_3000 <- calculate_distances(sc_sample_2_over_3000_top_300_variable_genes_expression_profile, emptyDrops_expression_profile, euclidean = TRUE)
+```
+
+
+#Create dataset with non-normalized euclidean distance values for knee_plot
+```{r}
+data_with_eucl_dist_for_plot_sc_sample_2_over_100 <- merge_barcodes_counts_and_distances(sc_sample_2_over_100, eucl_dist_sc_sample_2_over_100)
+data_with_eucl_dist_for_plot_sc_sample_2_over_1000 <- merge_barcodes_counts_and_distances(sc_sample_2_over_1000, eucl_dist_sc_sample_2_over_1000)
+data_with_eucl_dist_for_plot_sc_sample_2_over_3000 <- merge_barcodes_counts_and_distances(sc_sample_2_over_3000, eucl_dist_sc_sample_2_over_3000)
+```
+
+
+# Comparison of euclidean distance between cells assigned as Empty or Not-Empty by EmptyDrops from the subset of barcodes with UMI_count over 100
+```{r fig.height=15, fig.width=15}
+compare_empty_and_not_emptyDrops_by_eucl_distance <- data_with_eucl_dist_for_plot_sc_sample_2_over_100 %>%
+  mutate(EmptyDrops = as.factor(ifelse(Barcodes %in% not_empty_barcodes_sample_2, 'Not empty', 'Empty'))) 
+ggplot(compare_empty_and_not_emptyDrops_by_eucl_distance, aes(x = EmptyDrops, y = Distance)) +
+  geom_violin() +
+  geom_boxplot(width=0.3, aes(fill = EmptyDrops)) +
+  theme_bw() +
+  stat_compare_means(method = "t.test") +
+  ggtitle('Comparison of euclidean distance between cells assigned as Empty or Not-Empty by EmptyDrops from the subset of barcodes with UMI_count over 100') +
+  theme(plot.title = element_text(size = 18, hjust=0.5),
+        axis.text.x = element_text(size = 14),
+        axis.text.y = element_text(size = 14))
+```
+
+
+
