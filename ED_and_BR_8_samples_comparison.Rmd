@@ -65,7 +65,7 @@ barcodes_path_s1 <- "C:/Maria/IB/metrics/3.STAR/Fixed_fresh_K562_noPEG_R1/Solo.o
 genes_path_s1 <- "C:/Maria/IB/metrics/3.STAR/Fixed_fresh_K562_noPEG_R1/Solo.out/GeneFull/raw/features.tsv"
   
 counts_path_s2 <- "C:/Maria/IB/metrics/3.STAR/Fixed_fresh_K562_noPEG_R2/Solo.out/GeneFull/raw/matrix.mtx"
-barcodes_path_s2 <- "C:/Maria/IB/metrics/3.STAR/Fixed_fresh_K562_noPEG_R2/Solo.out/GeneFull/raw/barcodes.tsv "
+barcodes_path_s2 <- "C:/Maria/IB/metrics/3.STAR/Fixed_fresh_K562_noPEG_R2/Solo.out/GeneFull/raw/barcodes.tsv"
 genes_path_s2 <- "C:/Maria/IB/metrics/3.STAR/Fixed_fresh_K562_noPEG_R2/Solo.out/GeneFull/raw/features.tsv"
 
 counts_path_s3 <- "C:/Maria/IB/metrics/3.STAR/Fixed_fresh_K562_PEG_R1/Solo.out/GeneFull/raw/matrix.mtx"
@@ -73,7 +73,7 @@ barcodes_path_s3 <- "C:/Maria/IB/metrics/3.STAR/Fixed_fresh_K562_PEG_R1/Solo.out
 genes_path_s3 <-   "C:/Maria/IB/metrics/3.STAR/Fixed_fresh_K562_PEG_R1/Solo.out/GeneFull/raw/features.tsv"
   
 counts_path_s4 <- "C:/Maria/IB/metrics/3.STAR/Fixed_fresh_K562_PEG_R2/Solo.out/GeneFull/raw/matrix.mtx"
-barcodes_path_s4 <- "C:/Maria/IB/metrics/3.STAR/Fixed_fresh_K562_PEG_R2/Solo.out/GeneFull/raw/barcodes.tsv " 
+barcodes_path_s4 <- "C:/Maria/IB/metrics/3.STAR/Fixed_fresh_K562_PEG_R2/Solo.out/GeneFull/raw/barcodes.tsv" 
 genes_path_s4 <- "C:/Maria/IB/metrics/3.STAR/Fixed_fresh_K562_PEG_R2/Solo.out/GeneFull/raw/features.tsv "
 
 counts_path_s5 <- "C:/Maria/IB/metrics/3.STAR/Fixed_frozen_K562_noPEG_R1/Solo.out/GeneFull/raw/matrix.mtx"
