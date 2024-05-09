@@ -1,0 +1,390 @@
+---
+title: "8_Samples_merged_tables"
+author: "Maria"
+date: "2024-05-03"
+output: html_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+
+
+```{r libraries, echo=FALSE}
+library(dplyr)
+library(Matrix)
+library(tibble)
+library(ggplot2)
+library(ggpubr)
+library(grid)
+library(gridExtra)
+library(DropletUtils)
+library(glue)
+
+```
+##### Basic function
+*UMI_per_CB* возвращает DF для одного образца, с UMI_CB и порядковым номером CB в отсортированном массиве
+
+```{R, UMI_per_CB for 1 sample}
+
+# возвращает DF для одного образца, с UMI_CB и порядковым номером CB в отсортированном массиве
+UMI_per_CB <- function(counts_path_s1, barcodes_path_s1, genes_path_s1, counts_path_s2, barcodes_path_s2, genes_path_s2){
+  
+  #Read files
+  counts <- Matrix::readMM(counts_path_s1)
+  genes <- readr::read_tsv(genes_path_s1, col_names = FALSE)
+  gene_ids <- genes$X1
+  cell_ids <- readr::read_tsv(barcodes_path_s1, col_names = FALSE)$X1
+  
+  #Assign row and colnames
+  rownames(counts) <- gene_ids
+  colnames(counts) <- cell_ids
+  
+  #Calculate UMI per cell barcode distribution
+  umi_per_CB <- Matrix::colSums(counts)[Matrix::colSums(counts) > 0]
+  
+  #Calculate gene per cell barcode distribution
+  gene_per_CB <- Matrix::colSums(counts > 0)[Matrix::colSums(counts) > 0]
+  
+  
+  #Create sorted UMI_count DF
+  DF_umi_per_CB <- as.data.frame(umi_per_CB) %>%
+    arrange(desc(umi_per_CB)) %>%
+    mutate(cb = as.numeric(rownames(as.data.frame(umi_per_CB))))
+    DF_umi_per_CB <- DF_umi_per_CB%>%mutate(barcode = rownames(DF_umi_per_CB))
+  return (DF_umi_per_CB)
+}
+```
+
+
+# Paths to files
+```{R paths, echo=FALSE}
+
+counts_path_s1 <- "C:/Maria/IB/metrics/3.STAR/Fixed_fresh_K562_noPEG_R1/Solo.out/GeneFull/raw/matrix.mtx"
+barcodes_path_s1 <- "C:/Maria/IB/metrics/3.STAR/Fixed_fresh_K562_noPEG_R1/Solo.out/GeneFull/raw/barcodes.tsv"  
+genes_path_s1 <- "C:/Maria/IB/metrics/3.STAR/Fixed_fresh_K562_noPEG_R1/Solo.out/GeneFull/raw/features.tsv"
+  
+counts_path_s2 <- "C:/Maria/IB/metrics/3.STAR/Fixed_fresh_K562_noPEG_R2/Solo.out/GeneFull/raw/matrix.mtx"
+barcodes_path_s2 <- "C:/Maria/IB/metrics/3.STAR/Fixed_fresh_K562_noPEG_R2/Solo.out/GeneFull/raw/barcodes.tsv "
+genes_path_s2 <- "C:/Maria/IB/metrics/3.STAR/Fixed_fresh_K562_noPEG_R2/Solo.out/GeneFull/raw/features.tsv"
+
+counts_path_s3 <- "C:/Maria/IB/metrics/3.STAR/Fixed_fresh_K562_PEG_R1/Solo.out/GeneFull/raw/matrix.mtx"
+barcodes_path_s3 <- "C:/Maria/IB/metrics/3.STAR/Fixed_fresh_K562_PEG_R1/Solo.out/GeneFull/raw/barcodes.tsv" 
+genes_path_s3 <-   "C:/Maria/IB/metrics/3.STAR/Fixed_fresh_K562_PEG_R1/Solo.out/GeneFull/raw/features.tsv"
+  
+counts_path_s4 <- "C:/Maria/IB/metrics/3.STAR/Fixed_fresh_K562_PEG_R2/Solo.out/GeneFull/raw/matrix.mtx"
+barcodes_path_s4 <- "C:/Maria/IB/metrics/3.STAR/Fixed_fresh_K562_PEG_R2/Solo.out/GeneFull/raw/barcodes.tsv " 
+genes_path_s4 <- "C:/Maria/IB/metrics/3.STAR/Fixed_fresh_K562_PEG_R2/Solo.out/GeneFull/raw/features.tsv "
+
+counts_path_s5 <- "C:/Maria/IB/metrics/3.STAR/Fixed_frozen_K562_noPEG_R1/Solo.out/GeneFull/raw/matrix.mtx"
+barcodes_path_s5 <- "C:/Maria/IB/metrics/3.STAR/Fixed_frozen_K562_noPEG_R1/Solo.out/GeneFull/raw/barcodes.tsv" 
+genes_path_s5 <- "C:/Maria/IB/metrics/3.STAR/Fixed_frozen_K562_noPEG_R1/Solo.out/GeneFull/raw/features.tsv"
+
+counts_path_s6 <- "C:/Maria/IB/metrics/3.STAR/Fixed_frozen_K562_noPEG_R2/Solo.out/GeneFull/raw/matrix.mtx"
+barcodes_path_s6 <- "C:/Maria/IB/metrics/3.STAR/Fixed_frozen_K562_noPEG_R2/Solo.out/GeneFull/raw/barcodes.tsv"  
+genes_path_s6 <- "C:/Maria/IB/metrics/3.STAR/Fixed_frozen_K562_noPEG_R2/Solo.out/GeneFull/raw/features.tsv"
+
+counts_path_s7 <- "C:/Maria/IB/metrics/3.STAR/Fixed_frozen_K562_PEG_R1/Solo.out/GeneFull/raw/matrix.mtx"
+barcodes_path_s7 <- "C:/Maria/IB/metrics/3.STAR/Fixed_frozen_K562_PEG_R1/Solo.out/GeneFull/raw/barcodes.tsv" 
+genes_path_s7 <-   "C:/Maria/IB/metrics/3.STAR/Fixed_frozen_K562_PEG_R1/Solo.out/GeneFull/raw/features.tsv" 
+
+counts_path_s8 <- "C:/Maria/IB/metrics/3.STAR/Fixed_frozen_K562_PEG_R2/Solo.out/GeneFull/raw/matrix.mtx"
+barcodes_path_s8 <- "C:/Maria/IB/metrics/3.STAR/Fixed_frozen_K562_PEG_R2/Solo.out/GeneFull/raw/barcodes.tsv" 
+genes_path_s8 <- "C:/Maria/IB/metrics/3.STAR/Fixed_frozen_K562_PEG_R2/Solo.out/GeneFull/raw/features.tsv"
+  
+```
+##### Create df with UMIs_per_CB for each sample
+
+```{R sample UMI_counts, warning = FALSE, message = FALSE}
+s1 <- UMI_per_CB(counts_path_s1, barcodes_path_s1, genes_path_s1)
+s2 <- UMI_per_CB(counts_path_s2, barcodes_path_s2, genes_path_s2)
+s3 <- UMI_per_CB(counts_path_s3, barcodes_path_s3, genes_path_s3)
+s4 <- UMI_per_CB(counts_path_s4, barcodes_path_s4, genes_path_s4)
+s5 <- UMI_per_CB(counts_path_s5, barcodes_path_s5, genes_path_s5)
+s6 <- UMI_per_CB(counts_path_s6, barcodes_path_s6, genes_path_s6)
+s7 <- UMI_per_CB(counts_path_s7, barcodes_path_s7, genes_path_s7)
+s8 <- UMI_per_CB(counts_path_s8, barcodes_path_s8, genes_path_s8)
+```
+
+```{R, ED filtratin function}
+# напишем функцию фильтрации и возвращения списка CB с Empty Drops
+
+filter_barcodes_with_emptyDrops <- function(sparse_matrix, lower = 100, test.ambient = TRUE) {
+  emptyDrops_df = emptyDrops(sparse_matrix, lower = lower, test.ambient = test.ambient)
+  emptyDrops_df$FDR[is.na(emptyDrops_df$FDR)] <- 1 # выставляю всем NA FDR единичку
+  return(emptyDrops_df)
+}
+
+return_filtered_barcodes_or_indeces <- function(emptyDrops_df, fdr_threshold = 0.05, return_indeces = FALSE) {
+  filtered_barcodes_indeces <- which(emptyDrops_df$FDR < fdr_threshold) #список со всеми отфильтр. баркодами
+  
+  if (return_indeces) {
+    return(filtered_barcodes_indeces)
+  }
+  return(rownames(emptyDrops_df)[filtered_barcodes_indeces])
+}
+
+```
+
+Create matrix for each sample
+```{R sample matrix, warning = FALSE, message = FALSE}
+# Vector of paths to matrix and barcodes files
+matrix_paths <- c(counts_path_s1, counts_path_s2, 
+                  counts_path_s3, counts_path_s4,
+                  counts_path_s5, counts_path_s6,
+                  counts_path_s7, counts_path_s8)
+barcodes_paths <- c(barcodes_path_s1, barcodes_path_s2, 
+                    barcodes_path_s3, barcodes_path_s4,
+                    barcodes_path_s5, barcodes_path_s6,
+                    barcodes_path_s7, barcodes_path_s8)
+
+
+
+matrix_list <- list()
+for (i in 1:length(matrix_paths)) {
+  # Read the matrix
+  matrix_raw <- readMM(matrix_paths[i])
+  
+  # Read the barcodes
+  cell_ids <- readr::read_tsv(barcodes_paths[i], col_names = FALSE, show_col_types = FALSE)$X1
+  
+  # Set column names of the matrix
+  colnames(matrix_raw) <- cell_ids
+  
+  # Assign the matrix to a new object (optional, but recommended for clarity)
+  matrix_list[[i]] <- matrix_raw
+}
+```
+ED filtration one by one
+```{R, ED filtration}
+ED_CB_list = list()
+# пока по одному образцу фильтрую
+emptyDrops_df_1 <- filter_barcodes_with_emptyDrops(matrix_list[[1]])
+ED_CB_1 <- return_filtered_barcodes_or_indeces(emptyDrops_df_1, fdr_threshold = 0.05)
+
+emptyDrops_df_2 <- filter_barcodes_with_emptyDrops(matrix_list[[2]])
+ED_CB_2 <- return_filtered_barcodes_or_indeces(emptyDrops_df_2, fdr_threshold = 0.05)
+
+emptyDrops_df_3 <- filter_barcodes_with_emptyDrops(matrix_list[[3]])
+ED_CB_3 <- return_filtered_barcodes_or_indeces(emptyDrops_df_3, fdr_threshold = 0.05)
+
+emptyDrops_df_4 <- filter_barcodes_with_emptyDrops(matrix_list[[4]])
+ED_CB_4 <- return_filtered_barcodes_or_indeces(emptyDrops_df_4, fdr_threshold = 0.05)
+
+emptyDrops_df_5 <- filter_barcodes_with_emptyDrops(matrix_list[[5]])
+ED_CB_5 <- return_filtered_barcodes_or_indeces(emptyDrops_df_5, fdr_threshold = 0.05)
+
+emptyDrops_df_6 <- filter_barcodes_with_emptyDrops(matrix_list[[6]])
+ED_CB_6 <- return_filtered_barcodes_or_indeces(emptyDrops_df_6, fdr_threshold = 0.05)
+
+emptyDrops_df_7 <- filter_barcodes_with_emptyDrops(matrix_list[[7]])
+ED_CB_7 <- return_filtered_barcodes_or_indeces(emptyDrops_df_7, fdr_threshold = 0.05)
+
+emptyDrops_df_8 <- filter_barcodes_with_emptyDrops(matrix_list[[8]])
+ED_CB_8 <- return_filtered_barcodes_or_indeces(emptyDrops_df_8, fdr_threshold = 0.05)
+
+ED_CB_list = c(ED_CB_1, ED_CB_2, ED_CB_3, ED_CB_4, ED_CB_5, ED_CB_6, ED_CB_7, ED_CB_8)
+
+
+
+
+```
+
+Find *knee point* and *inflection* using BarcodeRanks
+
+```{R}
+# создаю список директорий для BR
+
+path_list <- c("C:/Maria/IB/metrics/3.STAR/Fixed_fresh_K562_noPEG_R1/Solo.out/GeneFull/raw",
+               "C:/Maria/IB/metrics/3.STAR/Fixed_fresh_K562_noPEG_R2/Solo.out/GeneFull/raw",
+                "C:/Maria/IB/metrics/3.STAR/Fixed_fresh_K562_PEG_R1/Solo.out/GeneFull/raw",
+                "C:/Maria/IB/metrics/3.STAR/Fixed_fresh_K562_PEG_R2/Solo.out/GeneFull/raw",
+                "C:/Maria/IB/metrics/3.STAR/Fixed_frozen_K562_noPEG_R1/Solo.out/GeneFull/raw",
+                "C:/Maria/IB/metrics/3.STAR/Fixed_frozen_K562_noPEG_R2/Solo.out/GeneFull/raw",
+                "C:/Maria/IB/metrics/3.STAR/Fixed_frozen_K562_PEG_R1/Solo.out/GeneFull/raw",
+                "C:/Maria/IB/metrics/3.STAR/Fixed_frozen_K562_PEG_R2/Solo.out/GeneFull/raw")
+
+inflection_list <- c()
+knee_list <- c()
+
+# Находим точки перегиба по ED
+for (i in 1:length(path_list)) {
+  # Read 10x data
+  sce <- read10xCounts(path_list[i], type = "sparse")
+  br.out <- barcodeRanks(assays(sce)$counts)
+  inflection <- br.out@metadata$inflection
+  knee <- br.out@metadata$knee
+  inflection_list[i] <- inflection
+  knee_list[i] <- knee
+}
+print("knee_list:")
+print(knee_list)
+print('inflection_list:')
+print(inflection_list)
+```
+
+Data filtration with BR inflection
+```{R, BR filtration}
+BR_s1 <-  subset(s1, (s1$umi_per_CB > 409 ))
+BR_s2 <-  subset(s2, (s2$umi_per_CB > 395 ))
+BR_s3 <-  subset(s3, (s3$umi_per_CB > 1308  ))
+BR_s4 <-  subset(s4, (s4$umi_per_CB > 1143  ))
+BR_s5 <-  subset(s5, (s5$umi_per_CB > 325  ))
+BR_s6 <-  subset(s6, (s6$umi_per_CB > 231  ))
+BR_s7 <-  subset(s7, (s7$umi_per_CB > 646  ))
+BR_s8 <-  subset(s8, (s8$umi_per_CB > 325 ))
+
+```
+
+Select by both ED and BR for each sample
+
+```{R, BR_inf+ED}
+#выбираем те, что отобраны также ED
+BR_ED_s1 <-  subset(BR_s1, (row.names(BR_s1) %in% ED_CB_1))
+BR_ED_s2 <-  subset(BR_s2, (row.names(BR_s2) %in% ED_CB_2 ))
+BR_ED_s3 <-  subset(BR_s3, (row.names(BR_s3) %in% ED_CB_3 ))
+BR_ED_s4 <-  subset(BR_s4, (row.names(BR_s4) %in% ED_CB_4 ))
+BR_ED_s5 <-  subset(BR_s5, (row.names(BR_s5) %in% ED_CB_5 ))
+BR_ED_s6 <-  subset(BR_s6, (row.names(BR_s6) %in% ED_CB_6 ))
+BR_ED_s7 <-  subset(BR_s7, (row.names(BR_s7) %in% ED_CB_7 ))
+BR_ED_s8 <-  subset(BR_s8, (row.names(BR_s8) %in% ED_CB_8 ))
+
+```
+
+
+Selected by BR but NOT by  ED
+```{R, BR_inf + NOT ED}
+BR_noED_s1 <-  subset(BR_s1, !(row.names(BR_s1) %in% ED_CB_1))
+BR_noED_s2 <-  subset(BR_s2, !(row.names(BR_s2) %in% ED_CB_2 ))
+BR_noED_s3 <-  subset(BR_s3, !(row.names(BR_s3) %in% ED_CB_3 ))
+BR_noED_s4 <-  subset(BR_s4, !(row.names(BR_s4) %in% ED_CB_4 ))
+BR_noED_s5 <-  subset(BR_s5, !(row.names(BR_s5) %in% ED_CB_5 ))
+BR_noED_s6 <-  subset(BR_s6, !(row.names(BR_s6) %in% ED_CB_6 ))
+BR_noED_s7 <-  subset(BR_s7, !(row.names(BR_s7) %in% ED_CB_7 ))
+BR_noED_s8 <-  subset(BR_s8, !(row.names(BR_s8) %in% ED_CB_8 ))
+
+```
+Проаназируем количество CB полученное для ED
+```{R}
+
+CB_ED_all_values <- unlist(ED_CB_list) # 47161
+
+CB_ED_unique <- unique(ED_CB_list)  # 13431
+
+CB_ED_value_counts<- table(CB_ED_all_values)
+
+CB_ED_common <- names(CB_ED_value_counts[CB_ED_value_counts == 8]) #780
+
+CB_ED_common_2 <- names(CB_ED_value_counts[CB_ED_value_counts >= 2]) #10337
+
+
+```
+Считаем "суммарный образец", сколько в нем будет будет отобранных отсечкой  BR, хороших баркодов по ED и нет
+Задаем функцию 'merge_sequentially'
+```{R}
+
+merge_sequentially <- function(...){
+  # Список датафреймов
+  data_frames <- list(...)
+  
+  # Последовательное объединение
+  merged_df <- data_frames[[1]]
+  for (i in 2:length(data_frames)) {
+    merged_df <- merge(merged_df, data_frames[[i]], by = "barcode", all = TRUE,
+                       suffixes = c("", paste0("_", i))) 
+  }
+  
+  return(merged_df)
+}
+
+```
+
+Получаем суммарный образец
+```{R}
+
+summ <- merge_sequentially(s1, s2, s3, s4, s5, s6, s7, s8)
+summ_BR <- merge_sequentially(BR_s1, BR_s2, BR_s3, BR_s4, BR_s5, BR_s6, BR_s7, BR_s8) 
+```
+А теперь начинаем отбирать с помощью ED и BR
+```{R}
+sum_ED <-  subset(summ, (summ$barcode %in% ED_CB_list))
+sum_not_ED <-  subset(summ, !(summ$barcode %in% ED_CB_list))
+# в такой ситуации остаются все капли, которые прошли ED, и те, в #которых хотя бы в одном образце выше Knee_point
+sum_ED_BR <- subset(sum_ED, (sum_ED$umi_per_CB > 409 |
+                               sum_ED$umi_per_CB_2 > 395 |
+                               sum_ED$umi_per_CB_3 > 1308 |
+                               sum_ED$umi_per_CB_4 > 1143|
+                               sum_ED$umi_per_CB_5 > 325 |
+                               sum_ED$umi_per_CB_6 > 231|
+                               sum_ED$umi_per_CB_7 > 646 |
+                               sum_ED$umi_per_CB_8 > 325
+                               ))
+# это не равно тому, чтобы объединить все индивидуальные датафреймы #типа BR_ED_sX 
+#я считала, там получается 11207, то есть примерно на #800 меньше, так как туда не #включаются те баркоды, которые прошли #проверку ED, но для этого же образца не прошли #проверку BR). #так сделать, нужно отбирать индивидуально для списка баркодов из ED по #каждому но так остаются NA
+
+
+ED_s1 <-  subset(s1, (row.names(s1) %in% ED_CB_1))
+ED_s2 <-  subset(s2, (row.names(s2) %in% ED_CB_2 ))
+ED_s3 <-  subset(s3, (row.names(s3) %in% ED_CB_3 ))
+ED_s4 <-  subset(s4, (row.names(s4) %in% ED_CB_4 ))
+ED_s5 <-  subset(s5, (row.names(s5) %in% ED_CB_5 ))
+ED_s6 <-  subset(s6, (row.names(s6) %in% ED_CB_6 ))
+ED_s7 <-  subset(s7, (row.names(s7) %in% ED_CB_7 ))
+ED_s8 <-  subset(s8, (row.names(s8) %in% ED_CB_8 ))
+
+summ_ED_by_one <- merge_sequentially(ED_s1, ED_s2, ED_s3, ED_s4, ED_s5, ED_s6, ED_s7, ED_s8)
+
+#можно получить, из объединенного датасета из индивидуальных отобранных по BR и ED, выбрав #оттуда баркоды. Здесь это BR_ED_summ
+# в этом DF те, которые прошли фильтрацию ED в рамках одного из образцов, и количество UMI в #этом же образце выше inflection point
+BR_ED_summ <- merge_sequentially(BR_ED_s1, BR_ED_s2, BR_ED_s3, BR_ED_s4, BR_ED_s5, BR_ED_s6, BR_ED_s7, BR_ED_s8)
+sum_by_ind_BR_ED <- subset(sum_ED_BR, sum_ED_BR$barcode %in% BR_ED_summ$barcode) 
+
+# можно посмотреть на разность # 860 баркодов
+diff_ED_BR_summ <- subset(sum_ED_BR, !(sum_ED_BR$barcode %in% sum_by_ind_BR_ED$barcode))
+
+
+
+```
+
+   Теперь смотрим на пустые капли. Отбираем те, что выше отсечки по BR inflection, для каждого она своя.
+````{R}
+# так получается 656
+sum_not_ED_BR <- subset(sum_not_ED, (sum_not_ED$umi_per_CB > 409 |
+                               sum_not_ED$umi_per_CB_2 > 395 |
+                               sum_not_ED$umi_per_CB_3 > 1308 |
+                               sum_not_ED$umi_per_CB_4 > 1143|
+                               sum_not_ED$umi_per_CB_5 > 325 |
+                               sum_not_ED$umi_per_CB_6 > 231|
+                               sum_not_ED$umi_per_CB_7 > 646 |
+                               sum_not_ED$umi_per_CB_8 > 325
+                               ))
+# а если отобрать аккуратно по одному образцу, из неурезанных, с помощью BR файлов:
+no_ED_s1 <-  subset(s1, !(row.names(s1) %in% ED_CB_1))
+no_ED_s2 <-  subset(s2, !(row.names(s2) %in% ED_CB_2 ))
+no_ED_s3 <-  subset(s3, !(row.names(s3) %in% ED_CB_3 ))
+no_ED_s4 <-  subset(s4, !(row.names(s4) %in% ED_CB_4 ))
+no_ED_s5 <-  subset(s5, !(row.names(s5) %in% ED_CB_5 ))
+no_ED_s6 <-  subset(s6, !(row.names(s6) %in% ED_CB_6 ))
+no_ED_s7 <-  subset(s7, !(row.names(s7) %in% ED_CB_7 ))
+no_ED_s8 <-  subset(s8, !(row.names(s8) %in% ED_CB_8 ))
+summ_notED_by_one <- merge_sequentially(no_ED_s1, no_ED_s2, no_ED_s3, no_ED_s4, no_ED_s5, no_ED_s6, no_ED_s7, no_ED_s8)
+#теперь нам надо выбрать по BR
+
+#можно получить, из объединенного датасета из индивидуальных отобранных по BR и  пустых по #ED, выбрав оттуда баркоды. Здесь это BR_noED_summ
+# в этом DF те, которые прошли фильтрацию ED в рамках одного из образцов, и количество UMI в #этом же образце выше inflection point
+BR_noED_summ <- merge_sequentially(BR_noED_s1, BR_noED_s2, BR_noED_s3, BR_noED_s4, BR_noED_s5, BR_noED_s6, BR_noED_s7, BR_noED_s8)
+sum_by_ind_BR_noED <- subset(summ_notED_by_one, summ_notED_by_one$barcode %in% BR_noED_summ$barcode) 
+
+
+````
+
+Если считать первым способом, то есть собрать все капли хоть раз(хоть в одном образце) названные "не пустыми", и хоть в одном образце выше BR inflection отсечки, то можно работать с этими данными:
+
+```{R}
+
+sum_not_ED_BR %>% write.csv("sum_8_not_ED_BR.csv")
+sum_ED_BR %>% write.csv("sum_8_ED_BR.csv")
+```
+
+-----------------------------------------
