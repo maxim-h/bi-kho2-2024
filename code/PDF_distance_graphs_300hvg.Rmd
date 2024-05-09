@@ -1,0 +1,189 @@
+---
+title: "PDF_distance_graphs"
+author: "Shakir Suleimanov"
+date: "2024-05-08"
+output: html_document
+---
+
+```{r setup, include=FALSE, warning=FALSE, message=FALSE}
+knitr::opts_chunk$set(
+	echo = TRUE,
+	message = FALSE,
+	warning = FALSE
+)
+```
+
+
+# Import libraries
+```{r libraries}
+library(ggplot2)
+library(readr)
+library(dplyr)
+```
+
+
+# Import datasets for correlation distances
+```{r}
+data_with_cor_dist_between_inflection_and_knee_points_300hvg_Solo_out_1 <- read_csv("../distances/300hvg/data_with_cor_dist_between_inflection_and_knee_points_300hvg_Solo.out_1.csv")[2:5]
+
+data_with_cor_dist_between_inflection_and_knee_points_300hvg_Solo_out_2 <- read_csv("../distances/300hvg/data_with_cor_dist_between_inflection_and_knee_points_300hvg_Solo.out_2.csv")[2:5]
+
+data_with_cor_dist_between_inflection_and_knee_points_300hvg_Fixed_fresh_K562_noPEG_R1 <- read.csv("../distances/300hvg/data_with_cor_dist_between_inflection_and_knee_points_300hvg_Fixed_fresh_K562_noPEG_R1.csv")[2:5]
+
+data_with_cor_dist_between_inflection_and_knee_points_300hvg_Fixed_fresh_K562_noPEG_R2 <- read.csv("../distances/300hvg/data_with_cor_dist_between_inflection_and_knee_points_300hvg_Fixed_fresh_K562_noPEG_R2.csv")[2:5]
+
+data_with_cor_dist_between_inflection_and_knee_points_300hvg_Fixed_fresh_K562_PEG_R1 <- read.csv("../distances/300hvg/data_with_cor_dist_between_inflection_and_knee_points_300hvg_Fixed_fresh_K562_PEG_R1.csv")[2:5]
+
+data_with_cor_dist_between_inflection_and_knee_points_300hvg_Fixed_fresh_K562_PEG_R2 <- read.csv("../distances/300hvg/data_with_cor_dist_between_inflection_and_knee_points_300hvg_Fixed_fresh_K562_PEG_R2.csv")[2:5]
+
+data_with_cor_dist_between_inflection_and_knee_points_300hvg_Fixed_frozen_K562_noPEG_R1 <- read.csv("../distances/300hvg/data_with_cor_dist_between_inflection_and_knee_points_300hvg_Fixed_frozen_K562_noPEG_R1.csv")[2:5]
+
+data_with_cor_dist_between_inflection_and_knee_points_300hvg_Fixed_frozen_K562_noPEG_R2 <- read.csv("../distances/300hvg/data_with_cor_dist_between_inflection_and_knee_points_300hvg_Fixed_frozen_K562_noPEG_R2.csv")[2:5]
+
+data_with_cor_dist_between_inflection_and_knee_points_300hvg_Fixed_frozen_K562_PEG_R1 <- read.csv("../distances/300hvg/data_with_cor_dist_between_inflection_and_knee_points_300hvg_Fixed_frozen_K562_PEG_R1.csv")[2:5]
+
+data_with_cor_dist_between_inflection_and_knee_points_300hvg_Fixed_frozen_K562_PEG_R2 <- read.csv("../distances/300hvg/data_with_cor_dist_between_inflection_and_knee_points_300hvg_Fixed_frozen_K562_PEG_R2.csv")[2:5]
+```
+
+
+# Import datasets for euclidean distances
+```{r}
+data_with_eucl_dist_between_inflection_and_knee_points_300hvg_Solo_out_1 <- read_csv("../distances/300hvg/data_with_eucl_dist_between_inflection_and_knee_points_300hvg_Solo.out_1.csv")[2:5]
+
+data_with_eucl_dist_between_inflection_and_knee_points_300hvg_Solo_out_2 <- read_csv("../distances/300hvg/data_with_eucl_dist_between_inflection_and_knee_points_300hvg_Solo.out_2.csv")[2:5]
+
+data_with_eucl_dist_between_inflection_and_knee_points_300hvg_Fixed_fresh_K562_noPEG_R1 <- read.csv("../distances/300hvg/data_with_eucl_dist_between_inflection_and_knee_points_300hvg_Fixed_fresh_K562_noPEG_R1.csv")[2:5]
+
+data_with_eucl_dist_between_inflection_and_knee_points_300hvg_Fixed_fresh_K562_noPEG_R2 <- read.csv("../distances/300hvg/data_with_eucl_dist_between_inflection_and_knee_points_300hvg_Fixed_fresh_K562_noPEG_R2.csv")[2:5]
+
+data_with_eucl_dist_between_inflection_and_knee_points_300hvg_Fixed_fresh_K562_PEG_R1 <- read.csv("../distances/300hvg/data_with_eucl_dist_between_inflection_and_knee_points_300hvg_Fixed_fresh_K562_PEG_R1.csv")[2:5]
+
+data_with_eucl_dist_between_inflection_and_knee_points_300hvg_Fixed_fresh_K562_PEG_R2 <- read.csv("../distances/300hvg/data_with_eucl_dist_between_inflection_and_knee_points_300hvg_Fixed_fresh_K562_PEG_R2.csv")[2:5]
+
+data_with_eucl_dist_between_inflection_and_knee_points_300hvg_Fixed_frozen_K562_noPEG_R1 <- read.csv("../distances/300hvg/data_with_eucl_dist_between_inflection_and_knee_points_300hvg_Fixed_frozen_K562_noPEG_R1.csv")[2:5]
+
+data_with_eucl_dist_between_inflection_and_knee_points_300hvg_Fixed_frozen_K562_noPEG_R2 <- read.csv("../distances/300hvg/data_with_eucl_dist_between_inflection_and_knee_points_300hvg_Fixed_frozen_K562_noPEG_R2.csv")[2:5]
+
+data_with_eucl_dist_between_inflection_and_knee_points_300hvg_Fixed_frozen_K562_PEG_R1 <- read.csv("../distances/300hvg/data_with_eucl_dist_between_inflection_and_knee_points_300hvg_Fixed_frozen_K562_PEG_R1.csv")[2:5]
+
+data_with_eucl_dist_between_inflection_and_knee_points_300hvg_Fixed_frozen_K562_PEG_R2 <- read.csv("../distances/300hvg/data_with_eucl_dist_between_inflection_and_knee_points_300hvg_Fixed_frozen_K562_PEG_R2.csv")[2:5]
+```
+
+
+# Create full DF for cor distances for 2 samples
+```{r}
+cor_dist_dataset_2s <- rbind(data_with_cor_dist_between_inflection_and_knee_points_300hvg_Solo_out_1,
+                          data_with_cor_dist_between_inflection_and_knee_points_300hvg_Solo_out_2
+                          )
+```
+
+
+# Create full DF for eucl distances for 2 samples
+```{r}
+eucl_dist_dataset_2s <- rbind(data_with_eucl_dist_between_inflection_and_knee_points_300hvg_Solo_out_1,
+                          data_with_eucl_dist_between_inflection_and_knee_points_300hvg_Solo_out_2
+                          )
+```
+
+
+# Create full DF for cor distances for 8 samples
+```{r}
+cor_dist_dataset_8s <- rbind(data_with_cor_dist_between_inflection_and_knee_points_300hvg_Fixed_fresh_K562_noPEG_R1,
+                          data_with_cor_dist_between_inflection_and_knee_points_300hvg_Fixed_fresh_K562_noPEG_R2,
+                          data_with_cor_dist_between_inflection_and_knee_points_300hvg_Fixed_fresh_K562_PEG_R1,
+                          data_with_cor_dist_between_inflection_and_knee_points_300hvg_Fixed_fresh_K562_PEG_R2,
+                          data_with_cor_dist_between_inflection_and_knee_points_300hvg_Fixed_frozen_K562_noPEG_R1,
+                          data_with_cor_dist_between_inflection_and_knee_points_300hvg_Fixed_frozen_K562_noPEG_R2,
+                          data_with_cor_dist_between_inflection_and_knee_points_300hvg_Fixed_frozen_K562_PEG_R1,
+                          data_with_cor_dist_between_inflection_and_knee_points_300hvg_Fixed_frozen_K562_PEG_R2
+                          )
+```
+
+
+# Create full DF for eucl distances for 8 samples
+```{r}
+eucl_dist_dataset_8s <- rbind(data_with_eucl_dist_between_inflection_and_knee_points_300hvg_Fixed_fresh_K562_noPEG_R1,
+                          data_with_eucl_dist_between_inflection_and_knee_points_300hvg_Fixed_fresh_K562_noPEG_R2,
+                          data_with_eucl_dist_between_inflection_and_knee_points_300hvg_Fixed_fresh_K562_PEG_R1,
+                          data_with_eucl_dist_between_inflection_and_knee_points_300hvg_Fixed_fresh_K562_PEG_R2,
+                          data_with_eucl_dist_between_inflection_and_knee_points_300hvg_Fixed_frozen_K562_noPEG_R1,
+                          data_with_eucl_dist_between_inflection_and_knee_points_300hvg_Fixed_frozen_K562_noPEG_R2,
+                          data_with_eucl_dist_between_inflection_and_knee_points_300hvg_Fixed_frozen_K562_PEG_R1,
+                          data_with_eucl_dist_between_inflection_and_knee_points_300hvg_Fixed_frozen_K562_PEG_R2
+                          )
+```
+
+
+# Create density plot for correlation distances for 2 samples
+```{r fig.height=6, fig.width=10}
+ggplot(cor_dist_dataset_2s, aes(x = Distance)) +
+  geom_density(aes(fill = as.factor(Sample)), alpha = 0.7) +
+  theme_bw() +
+  labs(fill = 'Samples')
+```
+
+
+# Create density plot for euclidean distances for 2 samples
+```{r fig.height=6, fig.width=10}
+ggplot(eucl_dist_dataset_2s, aes(x = log(Distance))) +
+  geom_density(aes(fill = as.factor(Sample)), alpha = 0.7) +
+  theme_bw() +
+  labs(fill = 'Samples')
+```
+
+
+# Create density plot for correlation distances for 8 samples
+```{r fig.height=6, fig.width=10}
+ggplot(cor_dist_dataset_8s, aes(x = Distance)) +
+  geom_density(aes(fill = as.factor(Sample)), alpha = 0.7) +
+  theme_bw() +
+  labs(fill = 'Samples')
+```
+
+
+# Create density plot for euclidean distances for 8 samples
+```{r fig.height=6, fig.width=10}
+ggplot(eucl_dist_dataset_8s, aes(x = log(Distance))) +
+  geom_density(aes(fill = as.factor(Sample)), alpha = 0.7) +
+  theme_bw() +
+  labs(fill = 'Samples')
+```
+
+
+# Scatter plot for correlation distance for 2 samples
+```{r fig.height=6, fig.width=10}
+ggplot(cor_dist_dataset_2s, aes(y = Distance, x = UMI_count, fill = Sample)) +
+  geom_point(aes(color = Sample), alpha = 0.7) +
+  geom_smooth(method = 'lm') +
+  theme_bw()
+```
+
+
+# Scatter plot for euclidean distance for 2 samples
+```{r fig.height=6, fig.width=10}
+ggplot(eucl_dist_dataset_2s, aes(y = log(Distance), x = UMI_count, fill = Sample)) +
+  geom_point(aes(color = Sample), alpha = 0.7) +
+  geom_smooth(method = 'lm') +
+  theme_bw()
+```
+
+
+# Scatter plot for correlation distance for 8 samples
+```{r fig.height=6, fig.width=10}
+ggplot(cor_dist_dataset_8s, aes(y = Distance, x = UMI_count, fill = Sample)) +
+  #geom_point() +
+  geom_smooth(method = 'lm') +
+  theme_bw()
+```
+
+
+# Scatter plot for euclidean distance for 8 samples
+```{r fig.height=6, fig.width=10}
+ggplot(eucl_dist_dataset_8s, aes(y = log(Distance), x = UMI_count, fill = Sample)) +
+  #geom_point() +
+  geom_smooth(method = 'lm') +
+  theme_bw()
+```
+
+
+
