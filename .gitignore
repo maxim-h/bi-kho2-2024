@@ -1,4 +1,6 @@
 Data/
 code/.*
 figures/
-
+distances/
+Distances*
+highly_variable_genes/
