@@ -127,9 +127,9 @@ umi_gene_dist <- function(counts_path, barcodes_path, genes_path, file_name,
 #---------------------------------------Read 10X experiment
 
 sc_matrix_10X <- function(counts_path, barcodes_path, genes_path, file_names){
-  count_tables <- Matrix::readMM(counts[1])
-  rownames(count_tables) <- readr::read_tsv(genes[1], col_names = FALSE)$X1
-  colnames(count_tables) <- readr::read_tsv(barcodes[1], col_names = FALSE)$X1
+  count_tables <- Matrix::readMM(counts_path)
+  rownames(count_tables) <- readr::read_tsv(genes_path, col_names = FALSE)$X1
+  colnames(count_tables) <- readr::read_tsv(barcodes_path, col_names = FALSE)$X1
   
   return(count_tables)
 }
@@ -146,7 +146,7 @@ calculate_distances <- function(sc_matrix, emptyDrops_profile, cor_method = 'spe
       euclidean_dist <- function(a, b) sqrt(sum((a - b)^2))
       distances_intermediate_cell_vs_empty_drops$distance_value[i] = euclidean_dist(as.vector(sc_matrix[, i]), emptyDrops_profile)
     } else{
-      distances_intermediate_cell_vs_empty_drops$distance_value[i] = cor(as.vector(sc_matrix[, i]), emptyDrops_profile, method = cor_method)
+      distances_intermediate_cell_vs_empty_drops$distance_value[i] = (1 - abs(cor(as.vector(sc_matrix[, i]), emptyDrops_profile, method = cor_method)))
     }
   }
   distances_intermediate_cell_vs_empty_drops_df = as.data.frame(x=unlist(distances_intermediate_cell_vs_empty_drops$distance_value), row.names = unlist(distances_intermediate_cell_vs_empty_drops$barcodes))
@@ -171,8 +171,8 @@ knee_plot_with_distances <- function(dataset, barcodes_passed_ED){
     ylab('UMI distribution') +
     #scale_color_continuous(type = "viridis") +
     scale_colour_gradientn(colours = c('#3b528b','#21918c','#5ec962','#f6b092','#fde725', '#f6b092', '#5ec962', '#21918c', '#3b528b'),
-                           breaks = c(-1.0, -0.75, -0.5, -0.25, 0.0, 0.25, 0.5, 0.75, 1.0),
-                           limits = c(-1.0, 1.0),
+                           #breaks = c(-1.0, -0.75, -0.5, -0.25, 0.0, 0.25, 0.5, 0.75, 1.0),
+                           #limits = c(-1.0, 1.0),
                            values = c(-1.0, -0.75, -0.5, -0.25, 0.0, 0.25, 0.5, 0.75, 1.0)) +
     scale_x_log10(breaks=c(0, 10**round(log10(nrow(counts_data_merged))))) +
     scale_y_log10() +
@@ -192,8 +192,8 @@ knee_plot_with_distances <- function(dataset, barcodes_passed_ED){
     theme_bw() +
     ylab("Distance") +
     scale_colour_gradientn(colours = c('#3b528b','#21918c','#5ec962','#f6b092','#fde725', '#f6b092', '#5ec962', '#21918c', '#3b528b'),
-                           breaks = c(-1.0, -0.75, -0.5, -0.25, 0.0, 0.25, 0.5, 0.75, 1.0),
-                           limits = c(-1.0, 1.0),
+                           #breaks = c(-1.0, -0.75, -0.5, -0.25, 0.0, 0.25, 0.5, 0.75, 1.0),
+                           #limits = c(-1.0, 1.0),
                            values = c(-1.0, -0.75, -0.5, -0.25, 0.0, 0.25, 0.5, 0.75, 1.0)) +
     #scale_color_continuous(type='viridis') +
     theme(legend.position = "None",
@@ -212,8 +212,8 @@ knee_plot_with_distances <- function(dataset, barcodes_passed_ED){
     xlab('Barcodes, ranked by sum') +
     ylab("Empty FALSE/TRUE") +
     scale_colour_gradientn(colours = c('#3b528b','#21918c','#5ec962','#f6b092','#fde725', '#f6b092', '#5ec962', '#21918c', '#3b528b'),
-                           breaks = c(-1.0, -0.75, -0.5, -0.25, 0.0, 0.25, 0.5, 0.75, 1.0),
-                           limits = c(-1.0, 1.0),
+                           #breaks = c(-1.0, -0.75, -0.5, -0.25, 0.0, 0.25, 0.5, 0.75, 1.0),
+                           #limits = c(-1.0, 1.0),
                            values = c(-1.0, -0.75, -0.5, -0.25, 0.0, 0.25, 0.5, 0.75, 1.0)) +
     #scale_color_continuous(type='viridis') +
     theme(legend.position = "bottom",
