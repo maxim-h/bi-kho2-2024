@@ -1,0 +1,126 @@
+---
+title: "PDF_distance_graphs"
+author: "Shakir Suleimanov"
+date: "2024-05-08"
+output: html_document
+---
+
+```{r setup, include=FALSE, warning=FALSE, message=FALSE}
+knitr::opts_chunk$set(
+	echo = TRUE,
+	message = FALSE,
+	warning = FALSE
+)
+```
+
+
+# Import libraries
+```{r libraries}
+library(ggplot2)
+library(readr)
+library(dplyr)
+```
+
+
+```{r}
+inflection_points <- c(843, 512, 409,	395,	1308,	1143,	325,	231,	646,	325)
+
+knee_points <- c(4898,	3265, 921,	798,	2287,	2401,	511,	439,	1601,	1513)
+```
+
+
+# Import datasets for correlation distances
+```{r}
+ED_logs_Solo_out_1 <- read_csv("../distances/ED_logs/Solo.out_1.csv") %>%
+  filter((Total > inflection_points[1]) & (Total < knee_points[1])) 
+
+ED_logs_Solo_out_2 <- read_csv("../distances/ED_logs/Solo.out_2.csv") %>%
+  filter((Total > inflection_points[2]) & (Total < knee_points[2])) 
+
+ED_logs_Fixed_fresh_K562_noPEG_R1 <- read.csv("../distances/ED_logs/Fixed_fresh_K562_noPEG_R1.csv") %>%
+  filter((Total > inflection_points[3]) & (Total < knee_points[3])) 
+
+ED_logs_Fixed_fresh_K562_noPEG_R2 <- read.csv("../distances/ED_logs/Fixed_fresh_K562_noPEG_R2.csv") %>%
+  filter((Total > inflection_points[4]) & (Total < knee_points[4])) 
+
+ED_logs_Fixed_fresh_K562_PEG_R1 <- read.csv("../distances/ED_logs/Fixed_fresh_K562_PEG_R1.csv") %>%
+  filter((Total > inflection_points[5]) & (Total < knee_points[5])) 
+
+ED_logs_Fixed_fresh_K562_PEG_R2 <- read.csv("../distances/ED_logs/Fixed_fresh_K562_PEG_R2.csv") %>%
+  filter((Total > inflection_points[6]) & (Total < knee_points[6])) 
+
+ED_logs_Fixed_frozen_K562_noPEG_R1 <- read.csv("../distances/ED_logs/Fixed_frozen_K562_noPEG_R1.csv") %>%
+  filter((Total > inflection_points[7]) & (Total < knee_points[7])) 
+
+ED_logs_Fixed_frozen_K562_noPEG_R2 <- read.csv("../distances/ED_logs/Fixed_frozen_K562_noPEG_R2.csv") %>%
+  filter((Total > inflection_points[8]) & (Total < knee_points[8])) 
+
+ED_logs_Fixed_frozen_K562_PEG_R1 <- read.csv("../distances/ED_logs/Fixed_frozen_K562_PEG_R1.csv") %>%
+  filter((Total > inflection_points[9]) & (Total < knee_points[9])) 
+
+ED_logs_Fixed_frozen_K562_PEG_R2 <- read.csv("../distances/ED_logs/Fixed_frozen_K562_PEG_R2.csv") %>%
+  filter((Total > inflection_points[10]) & (Total < knee_points[10])) 
+```
+
+
+# Create full DF for eucl distances for 2 samples
+```{r}
+ED_logs_dataset_2s <- rbind(ED_logs_Solo_out_1,
+                            ED_logs_Solo_out_2
+                            )
+```
+
+
+# Create full DF for cor distances for 8 samples
+```{r}
+ED_logs_dataset_8s <- rbind(ED_logs_Fixed_fresh_K562_noPEG_R1,
+                            ED_logs_Fixed_fresh_K562_noPEG_R2,
+                            ED_logs_Fixed_fresh_K562_PEG_R1,
+                            ED_logs_Fixed_fresh_K562_PEG_R2,
+                            ED_logs_Fixed_frozen_K562_noPEG_R1,
+                            ED_logs_Fixed_frozen_K562_noPEG_R2,
+                            ED_logs_Fixed_frozen_K562_PEG_R1,
+                            ED_logs_Fixed_frozen_K562_PEG_R2
+                            )
+```
+
+
+# Create density plot for correlation distances for 2 samples
+```{r fig.height=6, fig.width=10}
+ggplot(ED_logs_dataset_2s, aes(x = LogProb)) +
+  geom_density(aes(fill = as.factor(Sample)), alpha = 0.7) +
+  theme_bw() +
+  labs(fill = 'Samples')
+```
+
+
+
+# Create density plot for correlation distances for 8 samples
+```{r fig.height=6, fig.width=10}
+ggplot(ED_logs_dataset_8s, aes(x = LogProb)) +
+  geom_density(aes(fill = as.factor(Sample)), alpha = 0.7) +
+  theme_bw() +
+  labs(fill = 'Samples')
+```
+
+
+# Scatter plot for correlation distance for 2 samples
+```{r fig.height=6, fig.width=10}
+ggplot(ED_logs_dataset_2s, aes(y = LogProb, x = Total, fill = Sample)) +
+  geom_point(aes(color = Sample), alpha = 0.7) +
+  geom_smooth(method = 'lm') +
+  theme_bw()
+```
+
+
+
+# Scatter plot for correlation distance for 8 samples
+```{r fig.height=6, fig.width=10}
+ggplot(ED_logs_dataset_8s, aes(y = LogProb, x = Total, fill = Sample)) +
+  #geom_point() +
+  geom_smooth(method = 'lm') +
+  theme_bw()
+```
+
+
+
