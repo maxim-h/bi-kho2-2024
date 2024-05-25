@@ -65,7 +65,7 @@ In the SUM-seq process, accessible chromatin and nuclear RNA are first tagged wi
   <p><i>Number of barcodes within inflection-knee range varies dramatically between samples</i></p>
 </div>
 
-## Conclusion
+## Conclusions
 
 Our findings highlight the complexity of droplet classification in SUMseq data, revealing significant sample-specific variations and the need for more refined analytical approaches to enhance detection accuracy and mitigate erroneous classifications. Our future work will focus on several tasks:
 
