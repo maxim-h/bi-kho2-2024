@@ -37,7 +37,7 @@ In the SUM-seq process, accessible chromatin and nuclear RNA are first tagged wi
   - Noted significant variability in the intermediate zone, with some samples having few non-empty droplets, while others had few unselected by ED.
 
 <div align="center">
-  <img src="https://drive.google.com/uc?export=view&id=1arRLbHptLyxqYgBJlH6UvuYGZzbWezd7" alt="image.jpg" />
+  <img src="https://drive.google.com/uc?export=view&id=1seXhuik9YlcFv7jlQI8iG_GMGFkiC2B7" alt="image.jpg" />
   <p><i>Inconsistency in EmptyDrops filtration in different samples occur mostly between inflection and knee points</i></p>
 </div>
 
