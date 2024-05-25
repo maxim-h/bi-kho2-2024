@@ -1,0 +1,125 @@
+---
+title: "Distances between EmptyDrops and non_empty drops in sample 1"
+author: "Shakir Suleimanov"
+date: "2024-03-26"
+output: 
+  html_document:
+    #css: styles.css
+    latex_engine : xelatex
+    df_print: default
+    highlight: zenburn
+    toc: TRUE
+    toc_depth: 4
+mainfont : NanumGothic    
+editor_options: 
+  markdown: 
+    wrap: 72
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+### Libs
+```{r message=FALSE, warning=FALSE, include=FALSE}
+source('../R/calculate_distances.R')
+```
+
+
+### Datapaths
+```{r paths, echo=TRUE, message=FALSE, warning=FALSE}
+data <- read.csv('../distances/3000hvg/data_with_cor_dist_between_inflection_and_knee_points_3000hvg_Fixed_fresh_K562_noPEG_R1.csv', row.names = 1)
+
+```
+
+
+### Get barcodes which pass the EmptyDrops filtering
+```{r}
+empty_drops_df_sample_1 <- filter_barcodes_with_emptyDrops(sc_sample_1)
+
+not_empty_barcodes_sample_1 <- return_filtered_barcodes_or_indices(empty_drops_df_sample_1)
+```
+
+
+
+
+# Plot knee_plot for cells with UM_count over 100 - correlation distance
+```{r fig.height=10, fig.width=10}
+knee_plot_with_distances(data_with_cor_dist_for_plot_sc_sample_over_100, not_empty_barcodes_sample)
+```
+
+
+# Plot knee_plot for cells with UM_count over 1000 - correlation distance
+```{r fig.height=10, fig.width=10}
+knee_plot_with_distances(data_with_cor_dist_for_plot_sc_sample_over_1000, not_empty_barcodes_sample)
+```
+
+
+# Plot knee_plot for cells with UM_count over 3000 - correlation distance
+```{r fig.height=10, fig.width=10}
+knee_plot_with_distances(data_with_cor_dist_for_plot_sc_sample_over_3000, not_empty_barcodes_sample)
+```
+
+
+# Plot knee_plot for cells with UM_count over inflection point - correlation distance
+```{r fig.height=10, fig.width=10}
+knee_plot_with_distances(data_with_cor_dist_for_plot_sc_sample_over_ip, not_empty_barcodes_sample)
+```
+
+
+# Calculate correlation coefficients between UMI_counts and distance (correlation) for dataset with cell (over 100, over 1000 and over 3000)
+```{r}
+cor(data_with_cor_dist_for_plot_sc_sample_over_100$UMI_count, data_with_cor_dist_for_plot_sc_sample_over_100$Distance, method = 'spearman', use='pairwise.complete.obs')
+
+cor(data_with_cor_dist_for_plot_sc_sample_over_1000$UMI_count, data_with_cor_dist_for_plot_sc_sample_over_1000$Distance, method = 'spearman')
+
+cor(data_with_cor_dist_for_plot_sc_sample_over_3000$UMI_count, data_with_cor_dist_for_plot_sc_sample_over_3000$Distance, method = 'spearman')
+
+cor(data_with_cor_dist_for_plot_sc_sample_over_ip$UMI_count, data_with_cor_dist_for_plot_sc_sample_over_ip$Distance, method = 'spearman')
+```
+
+
+# Plot knee_plot for cells with UM_count over 100 - normalized euclidean distance
+```{r fig.height=10, fig.width=10}
+knee_plot_with_distances(data_with_eucl_dist_for_plot_sc_sample_over_100, not_empty_barcodes_sample)
+```
+
+
+# Plot knee_plot for cells with UM_count over 1000 - normalized euclidean distance
+```{r fig.height=10, fig.width=10}
+knee_plot_with_distances(data_with_eucl_dist_for_plot_sc_sample_over_1000, not_empty_barcodes_sample)
+```
+
+
+# Plot knee_plot for cells with UM_count over 3000 - normalized euclidean distance
+```{r fig.height=10, fig.width=10}
+knee_plot_with_distances(data_with_eucl_dist_for_plot_sc_sample_over_3000, not_empty_barcodes_sample)
+```
+
+
+# Plot knee_plot for cells with UM_count over inflection point - normalized euclidean distance
+```{r fig.height=10, fig.width=10}
+knee_plot_with_distances(data_with_eucl_dist_for_plot_sc_sample_over_ip, not_empty_barcodes_sample)
+```
+
+
+# Calculate correlation coefficients between UMI_counts and distance (euclidean) for dataset with cell (over 100, over 1000 and over 3000)
+```{r}
+cor(data_with_eucl_dist_for_plot_sc_sample_over_100$UMI_count, data_with_eucl_dist_for_plot_sc_sample_over_100$Distance, method = 'spearman', use='pairwise.complete.obs')
+
+cor(data_with_eucl_dist_for_plot_sc_sample_over_1000$UMI_count, data_with_eucl_dist_for_plot_sc_sample_over_1000$Distance, method = 'spearman')
+
+cor(data_with_eucl_dist_for_plot_sc_sample_over_3000$UMI_count, data_with_eucl_dist_for_plot_sc_sample_over_3000$Distance, method = 'spearman')
+
+cor(data_with_eucl_dist_for_plot_sc_sample_over_ip$UMI_count, data_with_eucl_dist_for_plot_sc_sample_over_ip$Distance, method = 'spearman')
+```
+
+
+
+
+
+
+
+
+
+

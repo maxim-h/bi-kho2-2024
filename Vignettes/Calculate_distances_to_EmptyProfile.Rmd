@@ -1,0 +1,192 @@
+---
+title: "Distances between EmptyDrops and non_empty drops in sample 1"
+author: "Shakir Suleimanov"
+date: "2024-03-26"
+output: 
+  html_document:
+    #css: styles.css
+    latex_engine : xelatex
+    df_print: default
+    highlight: zenburn
+    toc: TRUE
+    toc_depth: 4
+mainfont : NanumGothic    
+editor_options: 
+  markdown: 
+    wrap: 72
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+### Libs
+```{r message=FALSE, warning=FALSE, include=FALSE}
+source('../R/calculate_distances.R')
+source('../R/emptyDrops_filtering.R')
+```
+
+
+### Datapaths
+```{r paths, echo=TRUE, message=FALSE, warning=FALSE}
+counts <- c('../Data/Solo.out_1/Gene/raw/matrix.mtx.gz',
+            '../Data/Solo.out_2/Gene/raw/matrix.mtx.gz',
+            '../Data/3.STAR/Fixed_fresh_K562_noPEG_R1/Solo.out/GeneFull/raw/matrix.mtx',
+            '../Data/3.STAR/Fixed_fresh_K562_noPEG_R2/Solo.out/GeneFull/raw/matrix.mtx',
+            '../Data/3.STAR/Fixed_fresh_K562_PEG_R1/Solo.out/GeneFull/raw/matrix.mtx',
+            '../Data/3.STAR/Fixed_fresh_K562_PEG_R2/Solo.out/GeneFull/raw/matrix.mtx',
+            '../Data/3.STAR/Fixed_frozen_K562_noPEG_R1/Solo.out/GeneFull/raw/matrix.mtx',
+            '../Data/3.STAR/Fixed_frozen_K562_noPEG_R2/Solo.out/GeneFull/raw/matrix.mtx',
+            '../Data/3.STAR/Fixed_frozen_K562_PEG_R1/Solo.out/GeneFull/raw/matrix.mtx',
+            '../Data/3.STAR/Fixed_frozen_K562_PEG_R2/Solo.out/GeneFull/raw/matrix.mtx')
+
+genes <- c('../Data/Solo.out_1/Gene/raw/features.tsv.gz',
+           '../Data/Solo.out_2/Gene/raw/features.tsv.gz',
+            '../Data/3.STAR/Fixed_fresh_K562_noPEG_R1/Solo.out/GeneFull/raw/features.tsv',
+            '../Data/3.STAR/Fixed_fresh_K562_noPEG_R2/Solo.out/GeneFull/raw/features.tsv',
+            '../Data/3.STAR/Fixed_fresh_K562_PEG_R1/Solo.out/GeneFull/raw/features.tsv',
+            '../Data/3.STAR/Fixed_fresh_K562_PEG_R2/Solo.out/GeneFull/raw/features.tsv',
+            '../Data/3.STAR/Fixed_frozen_K562_noPEG_R1/Solo.out/GeneFull/raw/features.tsv',
+            '../Data/3.STAR/Fixed_frozen_K562_noPEG_R2/Solo.out/GeneFull/raw/features.tsv',
+            '../Data/3.STAR/Fixed_frozen_K562_PEG_R1/Solo.out/GeneFull/raw/features.tsv',
+            '../Data/3.STAR/Fixed_frozen_K562_PEG_R2/Solo.out/GeneFull/raw/features.tsv')
+
+barcodes <- c('../Data/Solo.out_1/Gene/raw/barcodes.tsv.gz',
+              '../Data/Solo.out_2/Gene/raw/barcodes.tsv.gz',
+            '../Data/3.STAR/Fixed_fresh_K562_noPEG_R1/Solo.out/GeneFull/raw/barcodes.tsv',
+            '../Data/3.STAR/Fixed_fresh_K562_noPEG_R2/Solo.out/GeneFull/raw/barcodes.tsv',
+            '../Data/3.STAR/Fixed_fresh_K562_PEG_R1/Solo.out/GeneFull/raw/barcodes.tsv',
+            '../Data/3.STAR/Fixed_fresh_K562_PEG_R2/Solo.out/GeneFull/raw/barcodes.tsv',
+            '../Data/3.STAR/Fixed_frozen_K562_noPEG_R1/Solo.out/GeneFull/raw/barcodes.tsv',
+            '../Data/3.STAR/Fixed_frozen_K562_noPEG_R2/Solo.out/GeneFull/raw/barcodes.tsv',
+            '../Data/3.STAR/Fixed_frozen_K562_PEG_R1/Solo.out/GeneFull/raw/barcodes.tsv',
+            '../Data/3.STAR/Fixed_frozen_K562_PEG_R2/Solo.out/GeneFull/raw/barcodes.tsv')
+
+filenames <- c('Solo.out_1',
+              'Solo.out_2',
+            'Fixed_fresh_K562_noPEG_R1',
+            'Fixed_fresh_K562_noPEG_R2',
+            'Fixed_fresh_K562_PEG_R1',
+            'Fixed_fresh_K562_PEG_R2',
+            'Fixed_frozen_K562_noPEG_R1',
+            'Fixed_frozen_K562_noPEG_R2',
+            'Fixed_frozen_K562_PEG_R1',
+            'Fixed_frozen_K562_PEG_R2')
+
+inflection_points <- c(843, 512, 409,	395,	1308,	1143,	325,	231,	646,	325)
+
+knee_points <- c(4898,	3265, 921,	798,	2287,	2401,	511,	439,	1601,	1513)
+							
+```
+
+
+```{r message=FALSE, warning=FALSE}
+for (i in 1:length(counts)){
+  
+  sample_id <- i
+  
+  path_to_file_with_highly_var_genes <- glue::glue("../highly_variable_genes/top_3000_highly_variable_genes_{filenames[sample_id]}.txt")
+  
+  top_highly_variable_genes_sample <- as.vector(read.delim(path_to_file_with_highly_var_genes, header=FALSE)$V1)
+  
+  number_of_highly_variable_genes <- as.numeric(gsub(".*?([0-9]+).*", "\\1", path_to_file_with_highly_var_genes))
+  
+  # Check the directory to store files
+  
+  if (i == 1){
+    if (file.exists(glue::glue('../distances/{number_of_highly_variable_genes}hvg/'))){
+      print(glue::glue('Directory for files exists!'))
+      print(glue::glue('==========================='))
+    } else {
+      print(glue::glue('Create a directory to write files'))
+      break
+    }
+  }
+
+  ### Read data from sample1
+  
+  sc_sample <- sc_matrix_10X(counts[sample_id], barcodes[sample_id], genes[sample_id], filenames[sample_id])
+  
+  ### Run EmptyDrops to get LogProbs
+  print(glue::glue('Start EmptyDrops for {filenames[sample_id]}'))
+  sc_sample_ED_filtered <- filter_barcodes_with_emptyDrops(sc_sample)
+  
+  sc_sample_ED_filtered$Barcodes <- sc_sample@Dimnames[[2]]
+    
+  sc_sample_ED_filtered <- sc_sample_ED_filtered[, c('Barcodes', 'Total', 'LogProb')]
+
+  sc_sample_ED_filtered$Sample <- filenames[sample_id]
+  
+  colnames(sc_sample_ED_filtered) <- c('Barcodes', 'UMI_count', 'Distance', 'Sample')
+  
+  sc_sample_ED_filtered <- sc_sample_ED_filtered[(sc_sample_ED_filtered$UMI_count > inflection_points[sample_id]) & (sc_sample_ED_filtered$UMI_count < knee_points[sample_id]), ]
+  print(glue::glue('EmptyDrops for {filenames[sample_id]} has finished'))
+  
+  ### EmptyDrops averaged expression profile
+  
+  sc_sample_emptyDrops <- sc_sample[,Matrix::colSums(sc_sample) <= 100 & Matrix::colSums(sc_sample) > 0]
+  emptyDrops_expression_profile <- Matrix::rowSums(sc_sample_emptyDrops)/sc_sample_emptyDrops@Dim[2]
+  emptyDrops_expression_profile <- emptyDrops_expression_profile[names(emptyDrops_expression_profile) %in% top_highly_variable_genes_sample]
+  
+  ### Datasets to compare with EmptyDrops
+  
+  ### Over inflection point and lower knee point
+  sc_sample_over_ip <- sc_sample[,Matrix::colSums(sc_sample) > inflection_points[sample_id] & Matrix::colSums(sc_sample) < knee_points[sample_id]]
+  sc_sample_over_ip_top_variable_genes_expression_profile <- sc_sample_over_ip[sc_sample_over_ip@Dimnames[[1]] %in% top_highly_variable_genes_sample, ]
+  
+  ### Calculate correlations between cells and EmptyDrops profile of 300top_highly_variable genes expression
+  
+  cor_dist_sc_sample_over_ip <- calculate_distances(sc_sample_over_ip_top_variable_genes_expression_profile, emptyDrops_expression_profile, euclidean = FALSE)
+  
+  ### Calculate euclidean distances between cells and EmptyDrops profile of 300top_highly_variable genes expression
+
+  eucl_dist_sc_sample_over_ip <- calculate_distances(sc_sample_over_ip_top_variable_genes_expression_profile, emptyDrops_expression_profile, euclidean = TRUE)
+  
+  ### Normalize euclidean distances from 0 to 1
+  
+  colnames(eucl_dist_sc_sample_over_ip) <- c('Distance')
+  eucl_dist_sc_sample_over_ip <- eucl_dist_sc_sample_over_ip %>%
+  mutate(Distance = (Distance - min(Distance))/(max(Distance) - min(Distance)))
+  
+  #Create dataset with correlation values for knee_plot
+
+  data_with_cor_dist_for_plot_sc_sample_over_ip <- merge_barcodes_counts_and_distances(sc_sample_over_ip, cor_dist_sc_sample_over_ip)
+  
+  #Create dataset with euclidean distance values for knee_plot
+  
+  data_with_eucl_dist_for_plot_sc_sample_over_ip <- merge_barcodes_counts_and_distances(sc_sample_over_ip, eucl_dist_sc_sample_over_ip)
+  
+  # Save datasets to .csv file
+  
+  data_with_cor_dist_between_inflection_and_knee_points <- data_with_cor_dist_for_plot_sc_sample_over_ip %>%
+  filter((UMI_count > inflection_points[sample_id]) & (UMI_count < knee_points[sample_id])) %>%
+  mutate(Sample = filenames[sample_id])
+  
+  data_with_eucl_dist_between_inflection_and_knee_points <- data_with_eucl_dist_for_plot_sc_sample_over_ip %>%
+  filter((UMI_count > inflection_points[sample_id]) & (UMI_count < knee_points[sample_id])) %>%
+  mutate(Sample = filenames[sample_id])
+
+  
+  write.csv(data_with_cor_dist_between_inflection_and_knee_points, file = glue::glue('../distances/{number_of_highly_variable_genes}hvg/{deparse(substitute(data_with_cor_dist_between_inflection_and_knee_points))}_{number_of_highly_variable_genes}hvg_{filenames[sample_id]}.csv'))
+    
+  print(glue::glue('File with correlation distances for {filenames[sample_id]} has been written!'))
+  
+  write.csv(data_with_eucl_dist_between_inflection_and_knee_points, file = glue::glue('../distances/{number_of_highly_variable_genes}hvg/{deparse(substitute(data_with_eucl_dist_between_inflection_and_knee_points))}_{number_of_highly_variable_genes}hvg_{filenames[sample_id]}.csv'))
+    
+  print(glue::glue('File with euclidean distances for {filenames[sample_id]} has been written!'))
+  
+  write.csv(sc_sample_ED_filtered, file = glue::glue('../distances/{number_of_highly_variable_genes}hvg/data_with_LogProbs_ED_between_inflection_and_knee_points_{number_of_highly_variable_genes}hvg_{filenames[sample_id]}.csv'), row.names = FALSE)
+  
+  print(glue::glue('File with LogProbs for {filenames[sample_id]} has been written!'))
+  
+  print(glue::glue('==========================================================================='))
+}
+```
+
+
+
+
+
+
+
+
