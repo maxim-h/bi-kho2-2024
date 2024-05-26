@@ -1,17 +1,6 @@
 library(ggplot2)
 library(dplyr)
 
-#---------------------------------------Read 10X experiment
-
-sc_matrix_10X <- function(counts_path, barcodes_path, genes_path, file_names){
-  count_tables <- Matrix::readMM(counts_path)
-  rownames(count_tables) <- readr::read_tsv(genes_path, col_names = FALSE)$X1
-  colnames(count_tables) <- readr::read_tsv(barcodes_path, col_names = FALSE)$X1
-  
-  return(count_tables)
-}
-
-
 #---------------------------------------Calculate distances between cells and emptyDrop profile
 
 calculate_distances <- function(sc_matrix, emptyDrops_profile, cor_method = 'spearman', euclidean = FALSE, returnDF = TRUE){

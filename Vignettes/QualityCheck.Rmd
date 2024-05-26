@@ -24,135 +24,27 @@ knitr::opts_chunk$set(echo = TRUE,
 
 ### Libs
 ```{r message=FALSE, warning=FALSE, include=FALSE}
-source('sample_qc.R')
+source('../R/sample_qc.R')
+source('../R/read_data.R')
+source('../R/emptyDrops_filtering.R')
 ```
 
 
-### Solo1
+### Sample quality before filtering
 ```{r fig.height=12, fig.width=16, message=FALSE, warning=FALSE}
-sample1_qc <- quality_metrics_one_sample(counts_path = '../Data/Solo.out_1/Gene/raw/matrix.mtx.gz', barcodes_path = '../Data/Solo.out_1/Gene/raw/barcodes.tsv.gz', genes_path = '../Data/Solo.out_1/Gene/raw/features.tsv.gz', file_name = 'Solo1')
+sample1 <- sc_matrix_10X(counts_path = '../Data/Solo.out_1/Gene/raw/matrix.mtx.gz', barcodes_path = '../Data/Solo.out_1/Gene/raw/barcodes.tsv.gz', genes_path = '../Data/Solo.out_1/Gene/raw/features.tsv.gz')
 
-sample1_qc_ED_filtered <- quality_metrics_one_sample(counts_path = '../Data/Solo.out_1/Gene/raw/matrix.mtx.gz', barcodes_path = '../Data/Solo.out_1/Gene/raw/barcodes.tsv.gz', genes_path = '../Data/Solo.out_1/Gene/raw/features.tsv.gz', file_name = 'Solo1_ED_filtered', emptydrops_run = TRUE)
-```
-
-### Solo2
-```{r}
-sample2_qc <- quality_metrics_one_sample(counts_path = '../Data/Solo.out_2/Gene/raw/matrix.mtx.gz', barcodes_path = '../Data/Solo.out_2/Gene/raw/barcodes.tsv.gz', genes_path = '../Data/Solo.out_2/Gene/raw/features.tsv.gz', file_name = 'Solo2')
-
-sample2_qc_ED_filtered <- quality_metrics_one_sample(counts_path = '../Data/Solo.out_2/Gene/raw/matrix.mtx.gz', barcodes_path = '../Data/Solo.out_2/Gene/raw/barcodes.tsv.gz', genes_path = '../Data/Solo.out_2/Gene/raw/features.tsv.gz', file_name = 'Solo2_ED_filtered', emptydrops_run = TRUE)
+sample1_qc <- quality_metrics_one_sample(sample1, genes_path = '../Data/Solo.out_1/Gene/raw/features.tsv.gz', file_name = 'Solo1')
 ```
 
 
-### Fixed_fresh_K562_noPEG_R1
-```{r}
-sample3_qc <- quality_metrics_one_sample(counts_path = '../Data/3.STAR/Fixed_fresh_K562_noPEG_R1/Solo.out/GeneFull/raw/matrix.mtx', 
-                                         barcodes_path = '../Data/3.STAR/Fixed_fresh_K562_noPEG_R1/Solo.out/GeneFull/raw/barcodes.tsv', 
-                                         genes_path = '../Data/3.STAR/Fixed_fresh_K562_noPEG_R1/Solo.out/GeneFull/raw/features.tsv', 
-                                         file_name = 'Fixed_fresh_K562_noPEG_R1')
+### Sample quality after filtering
+```{r fig.height=12, fig.width=16, message=FALSE, warning=FALSE}
+sample1_ED_filtered <- filter_barcodes_with_emptyDrops(matrix = sample1)
 
-sample3_qc_ED_filtered <- quality_metrics_one_sample(counts_path = '../Data/3.STAR/Fixed_fresh_K562_noPEG_R1/Solo.out/GeneFull/raw/matrix.mtx', 
-                                         barcodes_path = '../Data/3.STAR/Fixed_fresh_K562_noPEG_R1/Solo.out/GeneFull/raw/barcodes.tsv', 
-                                         genes_path = '../Data/3.STAR/Fixed_fresh_K562_noPEG_R1/Solo.out/GeneFull/raw/features.tsv', 
-                                         file_name = 'Fixed_fresh_K562_noPEG_R1_ED_filtered', emptydrops_run = TRUE)
-```
+filtered_barcodes <- return_filtered_barcodes_or_indices(sample1_ED_filtered)
 
-
-
-### Fixed_fresh_K562_noPEG_R2
-```{r}
-sample4_qc <- quality_metrics_one_sample(counts_path = '../Data/3.STAR/Fixed_fresh_K562_noPEG_R2/Solo.out/GeneFull/raw/matrix.mtx', 
-                                         barcodes_path = '../Data/3.STAR/Fixed_fresh_K562_noPEG_R2/Solo.out/GeneFull/raw/barcodes.tsv', 
-                                         genes_path = '../Data/3.STAR/Fixed_fresh_K562_noPEG_R2/Solo.out/GeneFull/raw/features.tsv', 
-                                         file_name = 'Fixed_fresh_K562_noPEG_R2')
-
-sample4_qc_ED_filtered <- quality_metrics_one_sample(counts_path = '../Data/3.STAR/Fixed_fresh_K562_noPEG_R2/Solo.out/GeneFull/raw/matrix.mtx', 
-                                         barcodes_path = '../Data/3.STAR/Fixed_fresh_K562_noPEG_R2/Solo.out/GeneFull/raw/barcodes.tsv', 
-                                         genes_path = '../Data/3.STAR/Fixed_fresh_K562_noPEG_R2/Solo.out/GeneFull/raw/features.tsv', 
-                                         file_name = 'Fixed_fresh_K562_noPEG_R2_ED_filtered', emptydrops_run = TRUE)
-```
-
-
-### Fixed_fresh_K562_PEG_R1
-```{r}
-sample5_qc  <- quality_metrics_one_sample(counts_path = '../Data/3.STAR/Fixed_fresh_K562_PEG_R1/Solo.out/GeneFull/raw/matrix.mtx', 
-                                         barcodes_path = '../Data/3.STAR/Fixed_fresh_K562_PEG_R1/Solo.out/GeneFull/raw/barcodes.tsv', 
-                                         genes_path = '../Data/3.STAR/Fixed_fresh_K562_PEG_R1/Solo.out/GeneFull/raw/features.tsv', 
-                                         file_name = 'Fixed_fresh_K562_PEG_R1')
-
-sample5_qc_ED_filtered  <- quality_metrics_one_sample(counts_path = '../Data/3.STAR/Fixed_fresh_K562_PEG_R1/Solo.out/GeneFull/raw/matrix.mtx', 
-                                         barcodes_path = '../Data/3.STAR/Fixed_fresh_K562_PEG_R1/Solo.out/GeneFull/raw/barcodes.tsv', 
-                                         genes_path = '../Data/3.STAR/Fixed_fresh_K562_PEG_R1/Solo.out/GeneFull/raw/features.tsv', 
-                                         file_name = 'Fixed_fresh_K562_PEG_R1_ED_filtered', emptydrops_run = TRUE)
-```
-
-
-### Fixed_fresh_K562_PEG_R2
-```{r}
-sample6_qc <- quality_metrics_one_sample(counts_path = '../Data/3.STAR/Fixed_fresh_K562_PEG_R2/Solo.out/GeneFull/raw/matrix.mtx', 
-                                         barcodes_path = '../Data/3.STAR/Fixed_fresh_K562_PEG_R2/Solo.out/GeneFull/raw/barcodes.tsv', 
-                                         genes_path = '../Data/3.STAR/Fixed_fresh_K562_PEG_R2/Solo.out/GeneFull/raw/features.tsv', 
-                                         file_name = 'Fixed_fresh_K562_PEG_R2')
-
-sample6_qc_ED_filtered <- quality_metrics_one_sample(counts_path = '../Data/3.STAR/Fixed_fresh_K562_PEG_R2/Solo.out/GeneFull/raw/matrix.mtx', 
-                                         barcodes_path = '../Data/3.STAR/Fixed_fresh_K562_PEG_R2/Solo.out/GeneFull/raw/barcodes.tsv', 
-                                         genes_path = '../Data/3.STAR/Fixed_fresh_K562_PEG_R2/Solo.out/GeneFull/raw/features.tsv', 
-                                         file_name = 'Fixed_fresh_K562_PEG_R2_ED_filtered', emptydrops_run = TRUE)
-```
-
-
-### Fixed_frozen_K562_noPEG_R1
-```{r}
-sample7_qc <- quality_metrics_one_sample(counts_path = '../Data/3.STAR/Fixed_frozen_K562_noPEG_R1/Solo.out/GeneFull/raw/matrix.mtx', 
-                                         barcodes_path = '../Data/3.STAR/Fixed_frozen_K562_noPEG_R1/Solo.out/GeneFull/raw/barcodes.tsv', 
-                                         genes_path = '../Data/3.STAR/Fixed_frozen_K562_noPEG_R1/Solo.out/GeneFull/raw/features.tsv', 
-                                         file_name = 'Fixed_frozen_K562_noPEG_R1')
-
-sample7_qc_ED_filtered <- quality_metrics_one_sample(counts_path = '../Data/3.STAR/Fixed_frozen_K562_noPEG_R1/Solo.out/GeneFull/raw/matrix.mtx', 
-                                         barcodes_path = '../Data/3.STAR/Fixed_frozen_K562_noPEG_R1/Solo.out/GeneFull/raw/barcodes.tsv', 
-                                         genes_path = '../Data/3.STAR/Fixed_frozen_K562_noPEG_R1/Solo.out/GeneFull/raw/features.tsv', 
-                                         file_name = 'Fixed_frozen_K562_noPEG_R1_ED_filtered', emptydrops_run = TRUE)
-```
-
-
-### Fixed_frozen_K562_noPEG_R2
-```{r}
-sample8_qc <- quality_metrics_one_sample(counts_path = '../Data/3.STAR/Fixed_frozen_K562_noPEG_R2/Solo.out/GeneFull/raw/matrix.mtx', 
-                                         barcodes_path = '../Data/3.STAR/Fixed_frozen_K562_noPEG_R2/Solo.out/GeneFull/raw/barcodes.tsv', 
-                                         genes_path = '../Data/3.STAR/Fixed_frozen_K562_noPEG_R2/Solo.out/GeneFull/raw/features.tsv', 
-                                         file_name = 'Fixed_frozen_K562_noPEG_R2')
-
-sample8_qc_ED_filtered <- quality_metrics_one_sample(counts_path = '../Data/3.STAR/Fixed_frozen_K562_noPEG_R2/Solo.out/GeneFull/raw/matrix.mtx', 
-                                         barcodes_path = '../Data/3.STAR/Fixed_frozen_K562_noPEG_R2/Solo.out/GeneFull/raw/barcodes.tsv', 
-                                         genes_path = '../Data/3.STAR/Fixed_frozen_K562_noPEG_R2/Solo.out/GeneFull/raw/features.tsv', 
-                                         file_name = 'Fixed_frozen_K562_noPEG_R2_ED_filtered', emptydrops_run = TRUE)
-```
-
-
-### Fixed_frozen_K562_PEG_R1
-```{r}
-sample9_qc <- quality_metrics_one_sample(counts_path = '../Data/3.STAR/Fixed_frozen_K562_PEG_R1/Solo.out/GeneFull/raw/matrix.mtx', 
-                                         barcodes_path = '../Data/3.STAR/Fixed_frozen_K562_PEG_R1/Solo.out/GeneFull/raw/barcodes.tsv', 
-                                         genes_path = '../Data/3.STAR/Fixed_frozen_K562_PEG_R1/Solo.out/GeneFull/raw/features.tsv', 
-                                         file_name = 'Fixed_frozen_K562_PEG_R1')
-
-sample9_qc_ED_filtered <- quality_metrics_one_sample(counts_path = '../Data/3.STAR/Fixed_frozen_K562_PEG_R1/Solo.out/GeneFull/raw/matrix.mtx', 
-                                         barcodes_path = '../Data/3.STAR/Fixed_frozen_K562_PEG_R1/Solo.out/GeneFull/raw/barcodes.tsv', 
-                                         genes_path = '../Data/3.STAR/Fixed_frozen_K562_PEG_R1/Solo.out/GeneFull/raw/features.tsv', 
-                                         file_name = 'Fixed_frozen_K562_PEG_R1_ED_filtered', emptydrops_run = TRUE)
-```
-
-
-### Fixed_frozen_K562_PEG_R2
-```{r}
-sample10_qc <- quality_metrics_one_sample(counts_path = '../Data/3.STAR/Fixed_frozen_K562_PEG_R2/Solo.out/GeneFull/raw/matrix.mtx', 
-                                         barcodes_path = '../Data/3.STAR/Fixed_frozen_K562_PEG_R2/Solo.out/GeneFull/raw/barcodes.tsv', 
-                                         genes_path = '../Data/3.STAR/Fixed_frozen_K562_PEG_R2/Solo.out/GeneFull/raw/features.tsv', 
-                                         file_name = 'Fixed_frozen_K562_PEG_R2')
-
-sample10_qc_ED_filtered <- quality_metrics_one_sample(counts_path = '../Data/3.STAR/Fixed_frozen_K562_PEG_R2/Solo.out/GeneFull/raw/matrix.mtx', 
-                                         barcodes_path = '../Data/3.STAR/Fixed_frozen_K562_PEG_R2/Solo.out/GeneFull/raw/barcodes.tsv', 
-                                         genes_path = '../Data/3.STAR/Fixed_frozen_K562_PEG_R2/Solo.out/GeneFull/raw/features.tsv', 
-                                         file_name = 'Fixed_frozen_K562_PEG_R2_ED_filtered', emptydrops_run = TRUE)
+sample1_filtered_qc <- quality_metrics_one_sample(sample1, genes_path = '../Data/Solo.out_1/Gene/raw/features.tsv.gz', file_name = 'Solo1_filtered', filter = TRUE, filtered_barcodes_list = filtered_barcodes)
 ```
 
 

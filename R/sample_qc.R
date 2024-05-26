@@ -2,46 +2,36 @@ library(grid)
 library(gridExtra)
 library(ggplot2)
 library(dplyr)
-source('emptyDrops_filtering.R')
 
 
-quality_metrics_one_sample <- function(counts_path, barcodes_path, genes_path, file_name,
-                          emptydrops_run = FALSE, lower = 100, 
-                          test.ambient = TRUE, fdr_threshold = 0.05, 
-                          return_indices = FALSE){
-  
-  #Read files
-  counts <- Matrix::readMM(counts_path)
-  genes <- readr::read_tsv(genes_path, col_names = FALSE)
-  gene_ids <- genes$X1
-  cell_ids <- readr::read_tsv(barcodes_path, col_names = FALSE)$X1
-  
-  #Assign row and colnames
-  rownames(counts) <- gene_ids
-  colnames(counts) <- cell_ids
+quality_metrics_one_sample <- function(sc_matrix, genes_path, file_name = 'Sample', filter = FALSE, filtered_barcodes_list = NULL){ 
   
   #Calculate UMI per cell barcode distribution
-  umi_per_CB <- as.data.frame(Matrix::colSums(counts)[Matrix::colSums(counts) > 0])
+  umi_per_CB <- as.data.frame(Matrix::colSums(sc_matrix)[Matrix::colSums(sc_matrix) > 0])
   colnames(umi_per_CB) <- c('UMIcount')
   
   #Calculate gene per cell barcode distribution
-  gene_per_CB <- as.data.frame(Matrix::colSums(counts > 0)[Matrix::colSums(counts) > 0])
+  gene_per_CB <- as.data.frame(Matrix::colSums(sc_matrix > 0)[Matrix::colSums(sc_matrix) > 0])
   colnames(gene_per_CB) <- c('Genecount')
   
-  #Run emptydrops IF needed
-  if (emptydrops_run == TRUE) {
-    
-    #Data filtering with empty drops
-    filtered_counts <- filter_barcodes_with_emptyDrops(matrix = counts, lower = lower, test.ambient = test.ambient)
-    
-    #Filtered barcodes
-    filtered_barcodes_list <- return_filtered_barcodes_or_indices(filtered_counts, fdr_threshold = fdr_threshold, 
-                                                                  return_indices = return_indices)
-    
+  if (filter == TRUE){
     umi_per_CB <- filter(umi_per_CB, rownames(umi_per_CB) %in% filtered_barcodes_list)
     gene_per_CB <- filter(gene_per_CB, rownames(gene_per_CB) %in% filtered_barcodes_list)
   }
   
+  genes <- readr::read_tsv(genes_path, col_names = FALSE)
+  #Calculate mitochondrial genes content
+  mito_genes <- c(grep(pattern = c("mt-"), genes$X2, value = TRUE), grep(pattern = c("MT-"), genes$X2, value = TRUE))
+  mito_genes_ens <- (filter(genes, X2 %in% mito_genes))$X1
+  percent_vector <- c(round(sum(sc_matrix[rownames(sc_matrix) %in% mito_genes_ens, ]) / sum(sc_matrix), 4), 1 - round(sum(sc_matrix[rownames(sc_matrix) %in% mito_genes_ens, ]) / sum(sc_matrix), 4))
+  label_vector <- c('MT', 'NonMT')
+  
+  #Create DF for piechart
+  mito_data <- data.frame(
+    group = label_vector,
+    value = percent_vector,
+    labels = percent_vector*100
+  )
   
   #Create plot for UMI per cell barcode distribution
   umi_per_CB_plot <- ggplot(umi_per_CB, aes(x = log10(UMIcount))) +
@@ -70,21 +60,8 @@ quality_metrics_one_sample <- function(counts_path, barcodes_path, genes_path, f
     theme(axis.text=element_text(size=14),
           axis.title=element_text(size=16,face="bold"))
   
-  #Calculate mitochondrial genes content
-  mito_genes <- c(grep(pattern = c("mt-"), genes$X2, value = TRUE), grep(pattern = c("MT-"), genes$X2, value = TRUE))
-  mito_genes_ens <- (filter(genes, X2 %in% mito_genes))$X1
-  percent_vector <- c(round(sum(counts[rownames(counts) %in% mito_genes_ens, ]) / sum(counts), 4), 1 - round(sum(counts[rownames(counts) %in% mito_genes_ens, ]) / sum(counts), 4))
-  label_vector <- c('MT', 'NonMT')
-  
-  #Create DF for piechart
-  pie_data <- data.frame(
-    group = label_vector,
-    value = percent_vector,
-    labels = percent_vector*100
-  )
-  
   #Create piechart
-  pie_chart <- ggplot(pie_data, aes(x="", y=value, fill=group)) +
+  pie_chart <- ggplot(mito_data, aes(x="", y=value, fill=group)) +
     geom_bar(stat="identity", width=1, color="white") +
     geom_text(aes(label = labels),
               position = position_stack(vjust = 0.5)) +
@@ -119,3 +96,4 @@ quality_metrics_one_sample <- function(counts_path, barcodes_path, genes_path, f
   
   return (final_plot)
 }
+
