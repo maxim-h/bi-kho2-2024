@@ -1,0 +1,160 @@
+---
+title: " Knee-plots coloured by UMI distribution between 2 samples"
+author: "Maria Lukina"
+date: "2024-04-25"
+output:
+  html_document: default
+  pdf_document: default
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+Libraries and Imports
+
+```{r, libraries, echo=FALSE, warning=FALSE, message=FALSE}
+library(dplyr)
+library(tibble)
+library(ggplot2)
+library(ggpubr)
+library(grid)
+library(gridExtra)
+library(viridis)
+library(RColorBrewer)
+library(glue)
+source('../R/read_data.R')
+source('../R/emptyDrops_filtering.R')
+```
+
+We are going to analyse EmptyDrops working on 2 samples: Solo1 and Solo2
+##### Organizing data
+
+```{R}
+#-----------------------------------------------------Solo1_raw
+
+counts_path_s1 <- ("../Data/Solo.out_1/Gene/raw/matrix.mtx.gz")
+genes_path_s1 <- ("../Data/Solo.out_1/Gene/raw/features.tsv.gz")
+barcodes_path_s1 <- ("../Data/Solo.out_1/Gene/raw/barcodes.tsv.gz")
+
+#-----------------------------------------------------Solo2_raw
+counts_path_s2 <- ("../Data/Solo.out_2/Gene/raw/matrix.mtx.gz")
+genes_path_s2 <- ("../Data/Solo.out_2/Gene/raw/features.tsv.gz")
+barcodes_path_s2 <- ("../Data/Solo.out_2/Gene/raw/barcodes.tsv.gz")
+
+```
+
+Data reading  and EmptyDrops running
+```{R matrices,  warning=FALSE, , message=FALSE}
+#Solo1
+matrix_1_raw <- sc_matrix_10X(counts_path_s1, barcodes_path_s1, genes_path_s1)
+emptyDrops_df_1 <- filter_barcodes_with_emptyDrops(matrix_1_raw)
+filtered_barcodes1 <- return_filtered_barcodes_or_indices(emptyDrops_df_1, fdr_threshold = 0.05) 
+#Solo2
+matrix_2_raw <- sc_matrix_10X(counts_path_s2, barcodes_path_s2, genes_path_s2)
+emptyDrops_df_2 <- filter_barcodes_with_emptyDrops(matrix_2_raw)
+filtered_barcodes2 <- return_filtered_barcodes_or_indices(emptyDrops_df_2, fdr_threshold = 0.05) 
+
+```
+Counting the total number of UMI for each barcode and ranking the barcodes for each sample
+
+```{R, UMI_per_CB count}
+
+#Calculate UMI per cell barcode distribution
+umi_per_CB_1 <- calculate_umi_per_cb(matrix_1_raw)
+umi_per_CB_2 <- calculate_umi_per_cb(matrix_2_raw)
+
+#Create sorted UMI_count DF
+DF_umi_per_CB1 <- umi_per_CB_1 %>%
+  arrange(desc(umi_per_CB_1)) %>%
+  mutate(cb = as.numeric(seq_len(nrow(umi_per_CB_1))))
+
+DF_umi_per_CB2 <- umi_per_CB_2 %>%
+  arrange(desc(umi_per_CB_2)) %>%
+  mutate(cb = as.numeric(seq_len(nrow(umi_per_CB_2))))
+
+```
+Creating a combined dataframe where barcodes are numbered according to the total number of UMI from both samples, and the proportion of UMI coming from each sample is calculated.
+
+```{R, combine 2 samples}
+DF_umi_per_CB_s1_s2_sort <- merge(DF_umi_per_CB1, DF_umi_per_CB2, 
+                             by = 'row.names', all = TRUE)
+
+#Replcase NA's with 0
+DF_umi_per_CB_s1_s2_sort[is.na(DF_umi_per_CB_s1_s2_sort)] <- 0
+
+#Calculate distribution and range Barcodes in summarized sampe
+
+DF_all <- DF_umi_per_CB_s1_s2_sort %>%
+  mutate(dist_s1 = round(UMIcount.x/(UMIcount.x + UMIcount.y),6)) %>%
+  mutate(dist_s2 = round(UMIcount.y/(UMIcount.x + UMIcount.y),6))%>%
+  mutate(umi_per_CB_total = UMIcount.y + UMIcount.x)
+DF_all_sorted <- as.data.frame(DF_all) %>%
+  arrange(desc(DF_all$umi_per_CB_total))
+DF_final <- as.data.frame(DF_all_sorted) %>%
+  mutate(common_CB_number = as.numeric(rownames(as.data.frame(DF_all_sorted))))
+```
+
+ 
+####Create knee-plots coloured by proportion of UMIs coming from sample Solo1 for selected/not selected by ED and all barcodes
+
+Now, let's define a function that  build a knee_plot and color it depending on the proportion of UMI coming from the first sample in the "total sample".
+
+The function will take a dataframe, maximum value for y scale, and graph title as input.
+
+The df should have the following columns:
+* `common_CB_number`: the barcode number from the combined df for the two samples, sorted by the total number of UMI/CB
+* `umi_per_CB`: the number of UMI for this barcode in combined sample
+* `dist_s1`: the ratio of the number of UMI for this barcode in sample 1 to the total number of UMI for this barcode
+* `y_max`: the maximum value for y scale
+```{R}
+knee_plot_UMI_sample_dist <- function(df, y_max, name){
+  colors <- brewer.pal(n = 11, name = "Spectral")
+  knee_plot_UMI_sample_dist <- ggplot(df, aes(x = common_CB_number, y = umi_per_CB_total, colour = dist_s1*100)) +
+    geom_point(size = 2) +
+    labs(y = 'UMI count, log10', x = 'cell barcodes, log10', title = name) +
+    theme_linedraw() +
+    theme(axis.text=element_text(size=14),
+          axis.title=element_text(size=16,face="bold")) +
+    scale_y_log10(limits = c(100, y_max)) +
+    scale_x_log10(limits = c(1, NA)) +
+    scale_colour_gradientn(colours = colors,
+                           guide = guide_colorbar(title = "UMIs from Sample1, %")) 
+  return (knee_plot_UMI_sample_dist)
+}
+```
+Preparing dataframes for 'summarized sample' containing > 100 UMIs (all_100) and its to subsets: barcodes selected by ED (yes) and not selected (no)
+
+```{R, message = FALSE, warnings = FALSE}
+filtered_barcodes <- unique(c(filtered_barcodes1, filtered_barcodes2))
+ED_yes <-  subset(DF_final, Row.names %in% filtered_barcodes)
+all_100 <-  subset(DF_final, DF_final$UMIcount.x > 100 | DF_final$UMIcount.y > 100)
+ED_no <-  subset(all_100, !(Row.names %in% filtered_barcodes))
+# mixed to avoid trends in point overlapping on plot
+ED_yes <- ED_yes[sample(nrow(ED_yes)), ]
+ED_no <- ED_no[sample(nrow(ED_no)), ]
+all_100 <- all_100[sample(nrow(all_100)), ]
+
+```
+Visualization by knee_plots
+For better visualization, we will plot all three graphs in the same interval on the y-axis: from 100 to the maximum number of UMI in the combined sample
+```{R, knee_plots, warning = FALSE}
+y_max <-  max(all_100$umi_per_CB_total)+ 200
+yes <- knee_plot_UMI_sample_dist(ED_yes, y_max, 'Selected by ED, (ED_yes)') 
+
+no <-  knee_plot_UMI_sample_dist(ED_no, y_max, 'Not selected by ED (ED_no)') 
+
+all <- knee_plot_UMI_sample_dist(all_100, y_max, 'all, nUMIs > 100') 
+
+yes
+no
+all
+
+combined_plot_3 <- (yes |  no | all) + 
+  plot_annotation(
+    theme = theme(plot.title = element_text(hjust = 0.5)) 
+  )
+
+
+file_path <- "knee_plots_all_yes_no.png"
+ggsave(file = file_path, plot = combined_plot_3, width = 24, height = 7, units = "in", dpi = 300)
+```
