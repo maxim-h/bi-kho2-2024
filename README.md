@@ -1,6 +1,8 @@
-# Investigation of Empty Droplets detection in SUMseq
 <div align="justify">
-This repo is an annual project made during studies in Bioinformatics Institute by Shakir Suleimanov, Maria Lukina and Vladimir Grigoriants
+  
+# Investigation of Empty Droplets detection in SUMseq
+  
+This repo is an annual project made during studies in Bioinformatics Institute by Shakir Suleimanov, Maria Lukina and Vladimir Grigoriants.
 
 This project focuses on identifying and visualizing dependencies that lead to erroneous droplet classification in SUMseq data, particularly due to lower overall coverage in some samples and uneven UMI distribution among cell nuclei. We developed methods to detect and visualize these differences using various analytical approaches.
 
