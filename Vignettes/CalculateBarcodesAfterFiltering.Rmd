@@ -1,6 +1,6 @@
 ---
 title: "8_Samples_ED_and_BR_filtration"
-author: "Maria"
+author: "Maria Lukina"
 date: "2024-05-03"
 output: html_document
 ---
@@ -78,7 +78,7 @@ path_dirs <- c("../Data/3.STAR/Fixed_fresh_K562_noPEG_R1/Solo.out/GeneFull/raw",
                 "../Data/3.STAR/Fixed_frozen_K562_PEG_R2/Solo.out/GeneFull/raw")
 ```
 
-### Create df with UMIs_per_CB for each sample
+### Create df with UMIs_per_CB for each sample and run EmptyDrops for each samples
 
 ```{R sample matrix, warning = FALSE, message = FALSE}
 ED_CB_list <- list()
@@ -153,7 +153,7 @@ for (i in 1:8) {
 
 ```
 
-Calculate some sample characteristics to compare
+Calculate some sample characteristics to compare them
 
 ```{R,  samples characteristics}
 
@@ -179,7 +179,7 @@ for (i in 1:length(s)) {
 ```
 
 Calculation for number of barcodes selected by ED depending on UMI_per_CB counts:
-in 3 groups:
+Ranged in 3 groups:
 100 < UMI_per_CB < inflection_point
 inflection_point < UMI_per_CB < knee_point
 knee_point < UMI_per_CB 
@@ -252,6 +252,8 @@ sum_data <- data.frame(
     "count_between_knee_and_inflection_ED_yes" = count_between_knee_and_inflection_ED_yes,
     "count_between_knee_and_inflection_ED_no" = count_between_knee_and_inflection_ED_no,
     "count_more_than_knee" = count_more_than_knee,
+"count_more_than_knee_ED_yes" = count_more_than_knee_ED_yes,
+"count_more_than_knee_ED_no" = count_more_than_knee_ED_no,
     "count_between_100_and_inflection" = count_between_100_and_inflection,
     "count_between_100_and_inflection_ED_yes" = count_between_100_and_inflection_ED_yes,
     "count_between_100_and_inflection_ED_no" = count_between_100_and_inflection_ED_no)
