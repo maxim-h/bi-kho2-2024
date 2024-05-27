@@ -16,7 +16,7 @@ In the SUM-seq process, accessible chromatin and nuclear RNA are first tagged wi
   <p><i>Introduction to combinatorial indexing</i></p>
 </div>
 
-Within our project, we analyzed single-cell RNA sequencing data from four samples obtained using the SUM-seq method. The samples differ in their preparation techniques, and each sample has two replicates (see Data Availability section)
+Within our project, we analyzed single-cell RNA sequencing data from four samples obtained using the SUM-seq method. The samples differ in their preparation techniques, and each sample has two replicates. Raw sequencing data is available upon request
 
 ## Key Methods and Findings
 
@@ -77,10 +77,6 @@ Our findings highlight the complexity of droplet classification in SUMseq data, 
 - Analysis of the differences between samples excluding the impact of the sample coverage 
 - Analysis of the distribution of the barcodes from several samples regarding inflection and knee point of the samples
 - Tuning the parameters of the EmptyDrops analysis regarding the individual sample metrics
-
-## Data availability
-
-Raw data is available by the [link](https://oc.embl.de/index.php/s/SfuE6F2wI7X69ZP). 
  
 ## Contacts
 
