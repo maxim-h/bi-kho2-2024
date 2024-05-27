@@ -6,7 +6,7 @@ This repo is an annual project made during studies in Bioinformatics Institute b
 
 This project focuses on identifying and visualizing dependencies that lead to erroneous droplet classification in SUMseq data, particularly due to lower overall coverage in some samples and uneven UMI distribution among cell nuclei. We developed methods to detect and visualize these differences using various analytical approaches.
 
-## Introduction to SUMseq technology
+## Introduction to SUMseq technology and data
 
 SUM-seq (Single-cell Ultra-high-throughput Multiomic sequencing) is introduced as a cost-effective and scalable sequencing technique designed for multiplexed multiomics profiling. This method enables the simultaneous profiling of chromatin accessibility and gene expression in single nuclei at an ultra-high-throughput scale, accommodating up to millions of cells and hundreds of samples. The technique refines the two-step combinatorial indexing approach, initially introduced by Datlinger et al. for snRNA-seq, adapting it specifically for a multiomic context.
 
@@ -15,6 +15,8 @@ In the SUM-seq process, accessible chromatin and nuclear RNA are first tagged wi
   <img src="https://drive.google.com/uc?export=view&id=1F8vMIbyUR42zOxa378jNyo4ll95jZBCW" alt="image.jpg" />
   <p><i>Introduction to combinatorial indexing</i></p>
 </div>
+
+Within our project, we analyzed single-cell RNA sequencing data from four samples obtained using the SUM-seq method. The samples differ in their preparation techniques, and each sample has two replicates (see Data Availability section)
 
 ## Key Methods and Findings
 
@@ -75,6 +77,10 @@ Our findings highlight the complexity of droplet classification in SUMseq data, 
 - Analysis of the differences between samples excluding the impact of the sample coverage 
 - Analysis of the distribution of the barcodes from several samples regarding inflection and knee point of the samples
 - Tuning the parameters of the EmptyDrops analysis regarding the individual sample metrics
+
+## Data availability
+
+Raw data is available by the [link](https://oc.embl.de/index.php/s/SfuE6F2wI7X69ZP). 
  
 ## Contacts
 
