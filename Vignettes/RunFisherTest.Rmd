@@ -22,7 +22,8 @@ source('../R/statistics.R')
 
 
 ### Read data table
-```{r}
+Output csv file from CalculateBarcodesAfterFitering.Rmd can be used
+```{r} 
 sum_data <- read.csv('../Data/8_samples_summarized_data.csv')
 ```
 
