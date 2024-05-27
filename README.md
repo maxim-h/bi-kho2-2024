@@ -80,5 +80,5 @@ Our findings highlight the complexity of droplet classification in SUMseq data, 
 
 Please feel free to contact us in any convenient way
 - Shakir Suleimanov - [Git-Hub](https://github.com/SuleimanovShakir) ; [e-mail](suleymanovef@gmail.com).
-- Maria Lukina - [Git-Hub](https://github.com/MariaLuk) ; [e-mail](suleymanovef@gmail.com)
+- Maria Lukina - [Git-Hub](https://github.com/MariaLuk) ; [e-mail](maria.v.luk@gmail.com)
 - Vladimir Grigoriants - [Git-Hub](https://github.com/VovaGrig) ; [e-mail](vova.grig2002@gmail.com)
