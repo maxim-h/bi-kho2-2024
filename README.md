@@ -46,10 +46,10 @@ Within our project, we analyzed single-cell RNA sequencing data from four sample
   <p><i>Inconsistency in EmptyDrops filtration in different samples occur mostly between inflection and knee points</i></p>
 </div>
 
-### Fisher’s Test Analysis
+### Overrepresentation Analysis
 
 - **Odds Ratio Examination:** 
-  - Analyzed the odds ratio for droplets being selected or not across samples using Fisher’s test.
+  - Analyzed the odds ratio for droplets being selected or not across samples using Fisher’s exact test.
   - Found minor differences in overall droplet selection for low coverage droplets and dramatic differences in the intermediate range, suggesting substantial, yet unexplained, sample-specific variations.
 
 <div align="center">
