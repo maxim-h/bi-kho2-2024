@@ -1,6 +1,6 @@
 <div align="justify">
   
-# Investigation of Empty Droplets detection in SUMseq
+# Identification of empty droplets in combinatorially indexed single cell RNA-seq data
   
 This repo is an annual project made during studies in Bioinformatics Institute by Shakir Suleimanov, Maria Lukina and Vladimir Grigoriants.
 
