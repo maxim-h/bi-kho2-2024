@@ -22,14 +22,13 @@ knitr::opts_chunk$set(echo = TRUE)
 
 ### Libs
 ```{r message=FALSE, warning=FALSE, include=FALSE}
-source('../R/calculate_distances.R')
+source("../R/calculate_distances.R")
 ```
 
 
 ### Datapaths
 ```{r paths, echo=TRUE, message=FALSE, warning=FALSE}
-data <- read.csv('../distances/3000hvg/data_with_cor_dist_between_inflection_and_knee_points_3000hvg_Fixed_fresh_K562_noPEG_R1.csv', row.names = 1)
-
+data <- read.csv("../distances/3000hvg/data_with_cor_dist_between_inflection_and_knee_points_3000hvg_Fixed_fresh_K562_noPEG_R1.csv", row.names = 1)
 ```
 
 
@@ -69,13 +68,13 @@ knee_plot_with_distances(data_with_cor_dist_for_plot_sc_sample_over_ip, not_empt
 
 # Calculate correlation coefficients between UMI_counts and distance (correlation) for dataset with cell (over 100, over 1000 and over 3000)
 ```{r}
-cor(data_with_cor_dist_for_plot_sc_sample_over_100$UMI_count, data_with_cor_dist_for_plot_sc_sample_over_100$Distance, method = 'spearman', use='pairwise.complete.obs')
+cor(data_with_cor_dist_for_plot_sc_sample_over_100$UMI_count, data_with_cor_dist_for_plot_sc_sample_over_100$Distance, method = "spearman", use = "pairwise.complete.obs")
 
-cor(data_with_cor_dist_for_plot_sc_sample_over_1000$UMI_count, data_with_cor_dist_for_plot_sc_sample_over_1000$Distance, method = 'spearman')
+cor(data_with_cor_dist_for_plot_sc_sample_over_1000$UMI_count, data_with_cor_dist_for_plot_sc_sample_over_1000$Distance, method = "spearman")
 
-cor(data_with_cor_dist_for_plot_sc_sample_over_3000$UMI_count, data_with_cor_dist_for_plot_sc_sample_over_3000$Distance, method = 'spearman')
+cor(data_with_cor_dist_for_plot_sc_sample_over_3000$UMI_count, data_with_cor_dist_for_plot_sc_sample_over_3000$Distance, method = "spearman")
 
-cor(data_with_cor_dist_for_plot_sc_sample_over_ip$UMI_count, data_with_cor_dist_for_plot_sc_sample_over_ip$Distance, method = 'spearman')
+cor(data_with_cor_dist_for_plot_sc_sample_over_ip$UMI_count, data_with_cor_dist_for_plot_sc_sample_over_ip$Distance, method = "spearman")
 ```
 
 
@@ -105,13 +104,13 @@ knee_plot_with_distances(data_with_eucl_dist_for_plot_sc_sample_over_ip, not_emp
 
 # Calculate correlation coefficients between UMI_counts and distance (euclidean) for dataset with cell (over 100, over 1000 and over 3000)
 ```{r}
-cor(data_with_eucl_dist_for_plot_sc_sample_over_100$UMI_count, data_with_eucl_dist_for_plot_sc_sample_over_100$Distance, method = 'spearman', use='pairwise.complete.obs')
+cor(data_with_eucl_dist_for_plot_sc_sample_over_100$UMI_count, data_with_eucl_dist_for_plot_sc_sample_over_100$Distance, method = "spearman", use = "pairwise.complete.obs")
 
-cor(data_with_eucl_dist_for_plot_sc_sample_over_1000$UMI_count, data_with_eucl_dist_for_plot_sc_sample_over_1000$Distance, method = 'spearman')
+cor(data_with_eucl_dist_for_plot_sc_sample_over_1000$UMI_count, data_with_eucl_dist_for_plot_sc_sample_over_1000$Distance, method = "spearman")
 
-cor(data_with_eucl_dist_for_plot_sc_sample_over_3000$UMI_count, data_with_eucl_dist_for_plot_sc_sample_over_3000$Distance, method = 'spearman')
+cor(data_with_eucl_dist_for_plot_sc_sample_over_3000$UMI_count, data_with_eucl_dist_for_plot_sc_sample_over_3000$Distance, method = "spearman")
 
-cor(data_with_eucl_dist_for_plot_sc_sample_over_ip$UMI_count, data_with_eucl_dist_for_plot_sc_sample_over_ip$Distance, method = 'spearman')
+cor(data_with_eucl_dist_for_plot_sc_sample_over_ip$UMI_count, data_with_eucl_dist_for_plot_sc_sample_over_ip$Distance, method = "spearman")
 ```
 
 

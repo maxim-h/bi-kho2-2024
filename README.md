@@ -1,7 +1,7 @@
 <div align="justify">
-  
+
 # Identification of empty droplets in combinatorially indexed single cell RNA-seq data
-  
+
 This repo is an annual project made during studies in Bioinformatics Institute by Shakir Suleimanov, Maria Lukina and Vladimir Grigoriants.
 
 This project focuses on identifying and visualizing dependencies that lead to erroneous droplet classification in SUMseq data, particularly due to lower overall coverage in some samples and uneven UMI distribution among cell nuclei. We developed methods to detect and visualize these differences using various analytical approaches.
@@ -22,7 +22,7 @@ Within our project, we analyzed single-cell RNA sequencing data from four sample
 
 ### Identification and Visualization of Droplet Differences
 
-- **Knee Plots:** 
+- **Knee Plots:**
   - Created knee plots with log scales on both axes to depict UMI/barcode counts.
   - **Knee Point:** Intersection of linear approximations separating non-empty droplets.
   - **Inflection Point:** Marks the change in the rate of decrease, also used for droplet selection.
@@ -36,7 +36,7 @@ Within our project, we analyzed single-cell RNA sequencing data from four sample
 
 ### Analysis with Eight Samples
 
-- **Droplet Categorization:** 
+- **Droplet Categorization:**
   - Categorized droplets based on UMI counts into three groups: above the knee, between the knee and inflection point, and below the minimum threshold of 100 UMI.
   - Found approximately 70% of theoretically non-empty droplets passed the EmptyDrops (ED) test without significant differences between samples.
   - Noted significant variability in the intermediate zone, with some samples having few non-empty droplets, while others had few unselected by ED.
@@ -48,7 +48,7 @@ Within our project, we analyzed single-cell RNA sequencing data from four sample
 
 ### Overrepresentation Analysis
 
-- **Odds Ratio Examination:** 
+- **Odds Ratio Examination:**
   - Analyzed the odds ratio for droplets being selected or not across samples using Fisher’s exact test.
   - Found minor differences in overall droplet selection for low coverage droplets and dramatic differences in the intermediate range, suggesting substantial, yet unexplained, sample-specific variations.
 
@@ -74,10 +74,10 @@ Within our project, we analyzed single-cell RNA sequencing data from four sample
 
 Our findings highlight the complexity of droplet classification in SUMseq data, revealing significant sample-specific variations and the need for more refined analytical approaches to enhance detection accuracy and mitigate erroneous classifications. Our future work will focus on several tasks:
 
-- Analysis of the differences between samples excluding the impact of the sample coverage 
+- Analysis of the differences between samples excluding the impact of the sample coverage
 - Analysis of the distribution of the barcodes from several samples regarding inflection and knee point of the samples
 - Tuning the parameters of the EmptyDrops analysis regarding the individual sample metrics
- 
+
 ## Contacts
 
 Please feel free to contact us in any convenient way

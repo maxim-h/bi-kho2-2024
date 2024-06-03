@@ -7,9 +7,9 @@ output: html_document
 
 ```{r setup, include=FALSE, warning=FALSE, message=FALSE}
 knitr::opts_chunk$set(
-	echo = TRUE,
-	message = FALSE,
-	warning = FALSE
+  echo = TRUE,
+  message = FALSE,
+  warning = FALSE
 )
 ```
 
@@ -17,14 +17,14 @@ knitr::opts_chunk$set(
 # Import libraries
 ```{r libraries}
 library(patchwork)
-source('../R/statistics.R')
+source("../R/statistics.R")
 ```
 
 
 ### Read data table
 Output csv file from CalculateBarcodesAfterFitering.Rmd can be used
 ```{r} 
-sum_data <- read.csv('../Data/8_samples_summarized_data.csv')
+sum_data <- read.csv("../Data/8_samples_summarized_data.csv")
 ```
 
 
@@ -46,7 +46,7 @@ data_kn_inf <- rbind.data.frame(filtered_by_ED, empty_by_ED)
 
 ### Select barcodes with 100 < nUMI < inflection
 ```{r}
-filtered_by_ED <- sum_data$count_between_100_and_inflection_ED_yes 
+filtered_by_ED <- sum_data$count_between_100_and_inflection_ED_yes
 empty_by_ED <- sum_data$count_between_100_and_inflection_ED_no
 data_inf_100 <- rbind.data.frame(filtered_by_ED, empty_by_ED)
 ```
@@ -54,24 +54,24 @@ data_inf_100 <- rbind.data.frame(filtered_by_ED, empty_by_ED)
 
 ### Select barcodes > 100 UMI
 ```{r}
-filtered_by_ED <- sum_data$count_between_100_and_inflection_ED_yes + sum_data$count_between_100_and_inflection_ED_yes + sum_data$count_more_than_knee 
-empty_by_ED <- sum_data$count_between_100_and_inflection_ED_no + sum_data$count_between_100_and_inflection_ED_no 
+filtered_by_ED <- sum_data$count_between_100_and_inflection_ED_yes + sum_data$count_between_100_and_inflection_ED_yes + sum_data$count_more_than_knee
+empty_by_ED <- sum_data$count_between_100_and_inflection_ED_no + sum_data$count_between_100_and_inflection_ED_no
 data_100 <- rbind.data.frame(filtered_by_ED, empty_by_ED)
 ```
 
 
 ### Perform Fisher's Test on different subsets
 ```{r fig.height=5, fig.width=20}
-fisher_plot_100 <- odds_ratio_analysis(data_100, 'nUMIs > 100')
-fisher_plot_inf <- odds_ratio_analysis(data_inf, 'nUMIs > inflection point')
-fisher_plot_inf_100 <- odds_ratio_analysis(data_inf_100, '100 < nUMIs < inflection point' )
-fisher_plot_kn_inf <- odds_ratio_analysis(data_kn_inf, 'inflection_point < nUMIs < knee point')
+fisher_plot_100 <- odds_ratio_analysis(data_100, "nUMIs > 100")
+fisher_plot_inf <- odds_ratio_analysis(data_inf, "nUMIs > inflection point")
+fisher_plot_inf_100 <- odds_ratio_analysis(data_inf_100, "100 < nUMIs < inflection point")
+fisher_plot_kn_inf <- odds_ratio_analysis(data_kn_inf, "inflection_point < nUMIs < knee point")
 
 
-combined_plot <- (fisher_plot_100 |  fisher_plot_inf_100 |  fisher_plot_kn_inf | fisher_plot_inf) + 
+combined_plot <- (fisher_plot_100 | fisher_plot_inf_100 | fisher_plot_kn_inf | fisher_plot_inf) +
   plot_annotation(
     title = "Odds ratio for each sample vs. summarized sample",
-    theme = theme(plot.title = element_text(hjust = 0.5)) 
+    theme = theme(plot.title = element_text(hjust = 0.5))
   )
 
 
