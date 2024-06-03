@@ -1,0 +1,126 @@
+---
+title: "Analysis"
+author: "Shakir Suleimanov"
+date: "2024-03-26"
+output: 
+  html_document:
+    #css: styles.css
+    latex_engine : xelatex
+    df_print: default
+    highlight: zenburn
+    toc: TRUE
+    toc_depth: 4
+mainfont : NanumGothic    
+editor_options: 
+  markdown: 
+    wrap: 72
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+### Imports
+```{r message=FALSE, warning=FALSE, include=FALSE}
+source('../R/samples_comparison.R')
+source('../R/plotting.R')
+```
+
+
+### Datapaths
+```{r paths, echo=TRUE, message=FALSE, warning=FALSE}
+counts <- c('../Data/Solo.out_1/Gene/raw/matrix.mtx.gz',
+            '../Data/Solo.out_2/Gene/raw/matrix.mtx.gz')
+
+genes <- c('../Data/Solo.out_1/Gene/raw/features.tsv.gz',
+           '../Data/Solo.out_2/Gene/raw/features.tsv.gz')
+
+barcodes <- c('../Data/Solo.out_1/Gene/raw/barcodes.tsv.gz',
+              '../Data/Solo.out_2/Gene/raw/barcodes.tsv.gz')
+
+filenames <- c('Solo1', 'Solo2')
+```
+
+### Summary metrics for UMI distribution between samples before filtering with EmptyDrops
+```{r no filtering, echo=TRUE, fig.height=12, fig.width=14, message=FALSE, warning=FALSE}
+# Read the samples and create a merged table for all samples
+experiments_no_filtering <- read_10X_samples(counts, barcodes, genes, 
+                                filenames, emptydrops_run = FALSE, fdr_threshold = 0.05)
+
+# Calculate distribution in each barcode
+experiments_no_filtering <- calculate_distributions(experiments_no_filtering, number_of_samples = 2)
+
+# Perform multinomial testing to test the departure of the UMI distribution from the reference distribution
+experiments_no_filtering <- multinomial_testing(experiments_no_filtering, number_of_samples = 2, prob=c(0.675, 1 - 0.675))
+
+# Create a data of p-values for barcodes
+pvals <- experiments_no_filtering$non_filt_pvals
+
+# Intersection plot
+intersect_plot_no_filtering <- plot_intersections(experiments_no_filtering, min_intersection_size = 2000)
+
+# Boxplot of distributions
+bp_distributions_no_filtering <- plot_distributions_boxplots(experiments_no_filtering, number_of_samples = 2, alpha = 0.15)
+
+# Density plot of distributions
+dp_distributions_no_filtering <- plot_distributions_density(experiments_no_filtering)
+
+intersect_plot_no_filtering
+bp_distributions_no_filtering
+dp_distributions_no_filtering
+```
+
+
+### Knee plot with UMI distributions for non-filtered samples 
+```{r fig.height=12, fig.width=14}
+# Knee-plot of the sample 1
+kp1sample_no_filtering <- knee_plot_sample_distribution(experiments_no_filtering, sample = 1, threshold = 0.05)
+
+# Knee-plot of the sample 2
+kp2sample_no_filtering <- knee_plot_sample_distribution(experiments_no_filtering, sample = 2, threshold = 0.05)
+
+kp1sample_no_filtering
+kp2sample_no_filtering
+```
+
+
+### Summary metrics for UMI distribution between samples after filtering with EmptyDrops
+```{r filtering1, echo=TRUE, fig.height=8, fig.width=14, message=FALSE, warning=FALSE}
+# Read the samples, perform the EmptyDrops filtering and create a merged table for all samples
+experiments_filtered <- read_10X_samples(counts, barcodes, genes, 
+                                   filenames, emptydrops_run = TRUE, fdr_threshold = 0.05)
+
+# Calculate distribution in each barcode
+experiments_filtered <- calculate_distributions(experiments_filtered, number_of_samples = 2)
+
+# Assign p-values to Barcodes from the unfiltered dataset 
+experiments_filtered <- assign_non_filt_pvals(experiments_filtered, pvals)
+
+# Intersection plot
+intersect_plot_filtered <- plot_intersections(experiments_filtered)
+
+# Boxplot of distributions
+bp_distributions_filtered <- plot_distributions_boxplots(experiments_filtered, number_of_samples = 2, alpha = 0.25)
+
+# Density plot of distributions
+dp_distributions_filtering <- plot_distributions_density(experiments_filtered)
+
+intersect_plot_filtered
+bp_distributions_filtered
+dp_distributions_filtering
+```
+
+
+### Knee plot with UMI distributions for non-filtered samples 
+```{r}
+# Knee-plot of the sample 1
+kp1sample_filtered <- knee_plot_sample_distribution(experiments_filtered, sample = 1, threshold = 0.05)
+
+# Knee-plot of the sample 2
+kp2sample_filtered <- knee_plot_sample_distribution(experiments_filtered, sample = 2, threshold = 0.05)
+
+kp1sample_filtered
+kp2sample_filtered
+```
+
+

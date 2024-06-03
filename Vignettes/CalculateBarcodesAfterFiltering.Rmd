@@ -1,0 +1,262 @@
+---
+title: "8_Samples_ED_and_BR_filtration"
+author: "Maria Lukina"
+date: "2024-05-03"
+output: html_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+
+
+```{r libraries, echo=FALSE, warning=FALSE, message=FALSE}
+library(dplyr)
+library(Matrix)
+library(tibble)
+library(ggplot2)
+library(ggpubr)
+library(grid)
+library(gridExtra)
+library(DropletUtils)
+library(glue)
+source('../R/read_data.R')
+source('../R/emptyDrops_filtering.R')
+```
+
+
+### Datapaths
+```{r paths, echo=TRUE, message=FALSE, warning=FALSE}
+counts <- c(
+            '../Data/3.STAR/Fixed_fresh_K562_noPEG_R1/Solo.out/GeneFull/raw/matrix.mtx',
+            '../Data/3.STAR/Fixed_fresh_K562_noPEG_R2/Solo.out/GeneFull/raw/matrix.mtx',
+            '../Data/3.STAR/Fixed_fresh_K562_PEG_R1/Solo.out/GeneFull/raw/matrix.mtx',
+            '../Data/3.STAR/Fixed_fresh_K562_PEG_R2/Solo.out/GeneFull/raw/matrix.mtx',
+            '../Data/3.STAR/Fixed_frozen_K562_noPEG_R1/Solo.out/GeneFull/raw/matrix.mtx',
+            '../Data/3.STAR/Fixed_frozen_K562_noPEG_R2/Solo.out/GeneFull/raw/matrix.mtx',
+            '../Data/3.STAR/Fixed_frozen_K562_PEG_R1/Solo.out/GeneFull/raw/matrix.mtx',
+            '../Data/3.STAR/Fixed_frozen_K562_PEG_R2/Solo.out/GeneFull/raw/matrix.mtx')
+
+genes <- c(
+            '../Data/3.STAR/Fixed_fresh_K562_noPEG_R1/Solo.out/GeneFull/raw/features.tsv',
+            '../Data/3.STAR/Fixed_fresh_K562_noPEG_R2/Solo.out/GeneFull/raw/features.tsv',
+            '../Data/3.STAR/Fixed_fresh_K562_PEG_R1/Solo.out/GeneFull/raw/features.tsv',
+            '../Data/3.STAR/Fixed_fresh_K562_PEG_R2/Solo.out/GeneFull/raw/features.tsv',
+            '../Data/3.STAR/Fixed_frozen_K562_noPEG_R1/Solo.out/GeneFull/raw/features.tsv',
+            '../Data/3.STAR/Fixed_frozen_K562_noPEG_R2/Solo.out/GeneFull/raw/features.tsv',
+            '../Data/3.STAR/Fixed_frozen_K562_PEG_R1/Solo.out/GeneFull/raw/features.tsv',
+            '../Data/3.STAR/Fixed_frozen_K562_PEG_R2/Solo.out/GeneFull/raw/features.tsv')
+
+barcodes <- c(
+            '../Data/3.STAR/Fixed_fresh_K562_noPEG_R1/Solo.out/GeneFull/raw/barcodes.tsv',
+            '../Data/3.STAR/Fixed_fresh_K562_noPEG_R2/Solo.out/GeneFull/raw/barcodes.tsv',
+            '../Data/3.STAR/Fixed_fresh_K562_PEG_R1/Solo.out/GeneFull/raw/barcodes.tsv',
+            '../Data/3.STAR/Fixed_fresh_K562_PEG_R2/Solo.out/GeneFull/raw/barcodes.tsv',
+            '../Data/3.STAR/Fixed_frozen_K562_noPEG_R1/Solo.out/GeneFull/raw/barcodes.tsv',
+            '../Data/3.STAR/Fixed_frozen_K562_noPEG_R2/Solo.out/GeneFull/raw/barcodes.tsv',
+            '../Data/3.STAR/Fixed_frozen_K562_PEG_R1/Solo.out/GeneFull/raw/barcodes.tsv',
+            '../Data/3.STAR/Fixed_frozen_K562_PEG_R2/Solo.out/GeneFull/raw/barcodes.tsv')
+
+filenames <- c(
+            'Fixed_fresh_K562_noPEG_R1',
+            'Fixed_fresh_K562_noPEG_R2',
+            'Fixed_fresh_K562_PEG_R1',
+            'Fixed_fresh_K562_PEG_R2',
+            'Fixed_frozen_K562_noPEG_R1',
+            'Fixed_frozen_K562_noPEG_R2',
+            'Fixed_frozen_K562_PEG_R1',
+            'Fixed_frozen_K562_PEG_R2')
+
+path_dirs <- c("../Data/3.STAR/Fixed_fresh_K562_noPEG_R1/Solo.out/GeneFull/raw",
+               "../Data/3.STAR/Fixed_fresh_K562_noPEG_R2/Solo.out/GeneFull/raw",
+                "../Data/3.STAR/Fixed_fresh_K562_PEG_R1/Solo.out/GeneFull/raw",
+                "../Data/3.STAR/Fixed_fresh_K562_PEG_R2/Solo.out/GeneFull/raw",
+                "../Data/3.STAR/Fixed_frozen_K562_noPEG_R1/Solo.out/GeneFull/raw",
+                "../Data/3.STAR/Fixed_frozen_K562_noPEG_R2/Solo.out/GeneFull/raw",
+                "../Data/3.STAR/Fixed_frozen_K562_PEG_R1/Solo.out/GeneFull/raw",
+                "../Data/3.STAR/Fixed_frozen_K562_PEG_R2/Solo.out/GeneFull/raw")
+```
+
+### Create df with UMIs_per_CB for each sample and run EmptyDrops for each samples
+
+```{R sample matrix, warning = FALSE, message = FALSE}
+ED_CB_list <- list()
+s <- list()
+
+for (i in 1:length(counts)) {
+  var_name <- paste0("s", i)
+  sc_mtx <- sc_matrix_10X(counts[i], barcodes[i], genes[i])
+  s[[i]] <- calculate_umi_per_cb(sc_mtx)
+  assign(var_name, s[[i]])
+  print(glue::glue('Finish reading sample {i}'))
+  emptyDrops_df <- filter_barcodes_with_emptyDrops(sc_mtx)
+  ED_CB_list[[i]] <- return_filtered_barcodes_or_indices(emptyDrops_df, fdr_threshold = 0.05)
+  print(glue::glue('Finish filtering sample {i}'))
+}
+```
+
+
+
+### Find *knee point* and *inflection* using BarcodeRanks
+
+```{R}
+inflection_points <- c()
+knee_points <- c()
+
+for (i in 1:length(path_dirs)) {
+  # Read 10x data
+  sce <- read10xCounts(path_dirs[i], type = "sparse")
+  br.out <- barcodeRanks(assays(sce)$counts)
+  inflection <- br.out@metadata$inflection
+  knee <- br.out@metadata$knee
+  inflection_points[i] <- inflection
+  knee_points[i] <- knee
+}
+print("knee_points:")
+print(knee_points)
+print('inflection_points:')
+print(inflection_points)
+```
+
+### Data filtration with BR inflection point and knee_point
+```{R, BR filtration}
+BR_selection_inflection <- list()
+
+for (i in 1:length(inflection_points)) {
+  var_name <- paste0("inf_BR_s", i)
+  BR_selection_inflection[[i]] <- subset(get(paste0("s", i)), get(paste0("s", i))$UMIcount > inflection_points[i])
+  assign(var_name, BR_selection_inflection[[i]])
+}
+
+BR_selection_knee <- list()
+
+for (i in 1:length(knee_points)) {
+  var_name <- paste0("knee_BR_s", i)
+  BR_selection_knee[[i]] <- subset(get(paste0("s", i)), get(paste0("s", i))$UMIcount > knee_points[i])
+  assign(var_name, BR_selection_knee[[i]])
+}
+
+```
+
+
+Selected barcodes in non filtered, > 100 UMI in each
+```{R, >100UMI}
+
+s_100 <- list()
+
+for (i in 1:8) {
+  var_name <- paste0("s", i, "_100")
+  s_100[[i]] <- subset(get(paste0("s", i)), get(paste0("s", i))$UMIcount > 100)
+  assign(var_name, s_100[[i]])
+}
+
+```
+
+Calculate some sample characteristics to compare them
+
+```{R,  samples characteristics}
+
+max_umi_count = c()
+for (i in 1:length(s)) {
+  smax <- max(s[[i]]$UMIcount)
+  max_umi_count[i] <- smax
+}
+
+s_BR = list(inf_BR_s1, inf_BR_s2, inf_BR_s3, inf_BR_s4, inf_BR_s5, inf_BR_s6, inf_BR_s7, inf_BR_s8)
+average_UMI_count_more_than_inflection = c()
+for (i in 1:length(s_BR)) {
+  smean <- mean(s_BR[[i]]$UMIcount)
+  average_UMI_count_more_than_inflection[i] <- smean
+}
+
+average_UMI_count = c()
+for (i in 1:length(s)) {
+  smean <- mean(s[[i]]$UMIcount)
+  average_UMI_count[i] <- smean
+}
+
+```
+
+Calculation for number of barcodes selected by ED depending on UMI_per_CB counts:
+Ranged in 3 groups:
+100 < UMI_per_CB < inflection_point
+inflection_point < UMI_per_CB < knee_point
+knee_point < UMI_per_CB 
+
+
+```{R}
+count_between_knee_and_inflection <- c()
+count_between_knee_and_inflection_ED_yes <- c()
+count_between_knee_and_inflection_ED_no <- c()
+count_more_than_knee <- c()
+count_more_than_knee_ED_yes <- c()
+count_more_than_knee_ED_no <- c()
+count_between_100_and_inflection <- c()
+count_between_100_and_inflection_ED_yes <- c()
+count_between_100_and_inflection_ED_no <- c()
+
+for (i in 1:8) {
+
+  ED_si <- subset(s[[i]], row.names(s[[i]]) %in% ED_CB_list[[i]])
+  si <- get(paste0("s", i))
+  
+  
+  count_between_knee_and_inflection_ED_yes[i] <- dim(subset(ED_si, 
+                                        (inflection_points[i] < UMIcount) & (UMIcount < knee_points[i])))[1]
+  count_between_knee_and_inflection[i] <- dim(subset(si, 
+                                        (inflection_points[i] < UMIcount) & (UMIcount < knee_points[i])))[1]
+  count_between_knee_and_inflection_ED_no[i] <- count_between_knee_and_inflection[i] -     count_between_knee_and_inflection_ED_yes[i]
+  
+  
+  
+  count_more_than_knee_ED_yes[i] <- dim(subset(ED_si, 
+                                        knee_points[i] < UMIcount))[1]
+  count_more_than_knee[i] <- dim(subset(si, 
+                                        knee_points[i] < UMIcount))[1]
+  count_more_than_knee_ED_no[i] <- count_more_than_knee[i] - count_more_than_knee_ED_yes[i]
+  
+  
+  
+  count_between_100_and_inflection_ED_yes[i] <- dim(subset(ED_si, 
+                                        100 < UMIcount & UMIcount < inflection_points[i]))[1]
+  count_between_100_and_inflection[i] <- dim(subset(si, 
+                                        100 < UMIcount & UMIcount < inflection_points[i]))[1]
+  count_between_100_and_inflection_ED_no[i] <- count_between_100_and_inflection[i] -     count_between_100_and_inflection_ED_yes[i]
+}
+print(count_between_knee_and_inflection)
+print(count_between_knee_and_inflection_ED_yes)
+print(count_between_knee_and_inflection_ED_no)
+
+print(count_more_than_knee)
+print(count_more_than_knee_ED_yes)
+print(count_more_than_knee_ED_no)
+
+print(count_between_100_and_inflection)
+print(count_between_100_and_inflection_ED_yes)
+print(count_between_100_and_inflection_ED_no)
+
+```
+
+
+Now We are compiling all the collected data into a csv file for further analysis and visualization of the disproportionate selection of non-empty droplets in different samples by the Empty Drops package.
+```{R}
+sum_data <- data.frame(
+    "sample_name" = c(1, 2, 3, 4, 5, 6, 7, 8),
+    "knee_point" = knee_points,
+    "inflection_point" = inflection_points,
+    "max_umi_per_CB_count" = max_umi_count,
+    "average_UMI_count_more_than_inflection" = average_UMI_count_more_than_inflection,
+    "average_UMI_count" = average_UMI_count,
+    "count_between_knee_and_inflection" = count_between_knee_and_inflection,
+    "count_between_knee_and_inflection_ED_yes" = count_between_knee_and_inflection_ED_yes,
+    "count_between_knee_and_inflection_ED_no" = count_between_knee_and_inflection_ED_no,
+    "count_more_than_knee" = count_more_than_knee,
+"count_more_than_knee_ED_yes" = count_more_than_knee_ED_yes,
+"count_more_than_knee_ED_no" = count_more_than_knee_ED_no,
+    "count_between_100_and_inflection" = count_between_100_and_inflection,
+    "count_between_100_and_inflection_ED_yes" = count_between_100_and_inflection_ED_yes,
+    "count_between_100_and_inflection_ED_no" = count_between_100_and_inflection_ED_no)
+
+sum_data %>% write.csv("../Data/8_samples_summarized_data.csv")
+```
