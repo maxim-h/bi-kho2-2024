@@ -22,61 +22,67 @@ knitr::opts_chunk$set(echo = TRUE)
 
 ### Imports
 ```{r message=FALSE, warning=FALSE, include=FALSE}
-source('../R/samples_comparison.R')
-source('../R/plotting.R')
-source('../R/emptyDrops_filtering.R')
+source("../R/samples_comparison.R")
+source("../R/plotting.R")
+source("../R/emptyDrops_filtering.R")
 ```
 
 
 ### Datapaths
 ```{r paths, echo=TRUE, message=FALSE, warning=FALSE}
 counts <- c(
-            '../Data/3.STAR/Fixed_fresh_K562_noPEG_R1/Solo.out/GeneFull/raw/matrix.mtx',
-            '../Data/3.STAR/Fixed_fresh_K562_noPEG_R2/Solo.out/GeneFull/raw/matrix.mtx',
-            '../Data/3.STAR/Fixed_fresh_K562_PEG_R1/Solo.out/GeneFull/raw/matrix.mtx',
-            '../Data/3.STAR/Fixed_fresh_K562_PEG_R2/Solo.out/GeneFull/raw/matrix.mtx',
-            '../Data/3.STAR/Fixed_frozen_K562_noPEG_R1/Solo.out/GeneFull/raw/matrix.mtx',
-            '../Data/3.STAR/Fixed_frozen_K562_noPEG_R2/Solo.out/GeneFull/raw/matrix.mtx',
-            '../Data/3.STAR/Fixed_frozen_K562_PEG_R1/Solo.out/GeneFull/raw/matrix.mtx',
-            '../Data/3.STAR/Fixed_frozen_K562_PEG_R2/Solo.out/GeneFull/raw/matrix.mtx')
+  "../Data/3.STAR/Fixed_fresh_K562_noPEG_R1/Solo.out/GeneFull/raw/matrix.mtx",
+  "../Data/3.STAR/Fixed_fresh_K562_noPEG_R2/Solo.out/GeneFull/raw/matrix.mtx",
+  "../Data/3.STAR/Fixed_fresh_K562_PEG_R1/Solo.out/GeneFull/raw/matrix.mtx",
+  "../Data/3.STAR/Fixed_fresh_K562_PEG_R2/Solo.out/GeneFull/raw/matrix.mtx",
+  "../Data/3.STAR/Fixed_frozen_K562_noPEG_R1/Solo.out/GeneFull/raw/matrix.mtx",
+  "../Data/3.STAR/Fixed_frozen_K562_noPEG_R2/Solo.out/GeneFull/raw/matrix.mtx",
+  "../Data/3.STAR/Fixed_frozen_K562_PEG_R1/Solo.out/GeneFull/raw/matrix.mtx",
+  "../Data/3.STAR/Fixed_frozen_K562_PEG_R2/Solo.out/GeneFull/raw/matrix.mtx"
+)
 
 genes <- c(
-            '../Data/3.STAR/Fixed_fresh_K562_noPEG_R1/Solo.out/GeneFull/raw/features.tsv',
-            '../Data/3.STAR/Fixed_fresh_K562_noPEG_R2/Solo.out/GeneFull/raw/features.tsv',
-            '../Data/3.STAR/Fixed_fresh_K562_PEG_R1/Solo.out/GeneFull/raw/features.tsv',
-            '../Data/3.STAR/Fixed_fresh_K562_PEG_R2/Solo.out/GeneFull/raw/features.tsv',
-            '../Data/3.STAR/Fixed_frozen_K562_noPEG_R1/Solo.out/GeneFull/raw/features.tsv',
-            '../Data/3.STAR/Fixed_frozen_K562_noPEG_R2/Solo.out/GeneFull/raw/features.tsv',
-            '../Data/3.STAR/Fixed_frozen_K562_PEG_R1/Solo.out/GeneFull/raw/features.tsv',
-            '../Data/3.STAR/Fixed_frozen_K562_PEG_R2/Solo.out/GeneFull/raw/features.tsv')
+  "../Data/3.STAR/Fixed_fresh_K562_noPEG_R1/Solo.out/GeneFull/raw/features.tsv",
+  "../Data/3.STAR/Fixed_fresh_K562_noPEG_R2/Solo.out/GeneFull/raw/features.tsv",
+  "../Data/3.STAR/Fixed_fresh_K562_PEG_R1/Solo.out/GeneFull/raw/features.tsv",
+  "../Data/3.STAR/Fixed_fresh_K562_PEG_R2/Solo.out/GeneFull/raw/features.tsv",
+  "../Data/3.STAR/Fixed_frozen_K562_noPEG_R1/Solo.out/GeneFull/raw/features.tsv",
+  "../Data/3.STAR/Fixed_frozen_K562_noPEG_R2/Solo.out/GeneFull/raw/features.tsv",
+  "../Data/3.STAR/Fixed_frozen_K562_PEG_R1/Solo.out/GeneFull/raw/features.tsv",
+  "../Data/3.STAR/Fixed_frozen_K562_PEG_R2/Solo.out/GeneFull/raw/features.tsv"
+)
 
 barcodes <- c(
-            '../Data/3.STAR/Fixed_fresh_K562_noPEG_R1/Solo.out/GeneFull/raw/barcodes.tsv',
-            '../Data/3.STAR/Fixed_fresh_K562_noPEG_R2/Solo.out/GeneFull/raw/barcodes.tsv',
-            '../Data/3.STAR/Fixed_fresh_K562_PEG_R1/Solo.out/GeneFull/raw/barcodes.tsv',
-            '../Data/3.STAR/Fixed_fresh_K562_PEG_R2/Solo.out/GeneFull/raw/barcodes.tsv',
-            '../Data/3.STAR/Fixed_frozen_K562_noPEG_R1/Solo.out/GeneFull/raw/barcodes.tsv',
-            '../Data/3.STAR/Fixed_frozen_K562_noPEG_R2/Solo.out/GeneFull/raw/barcodes.tsv',
-            '../Data/3.STAR/Fixed_frozen_K562_PEG_R1/Solo.out/GeneFull/raw/barcodes.tsv',
-            '../Data/3.STAR/Fixed_frozen_K562_PEG_R2/Solo.out/GeneFull/raw/barcodes.tsv')
+  "../Data/3.STAR/Fixed_fresh_K562_noPEG_R1/Solo.out/GeneFull/raw/barcodes.tsv",
+  "../Data/3.STAR/Fixed_fresh_K562_noPEG_R2/Solo.out/GeneFull/raw/barcodes.tsv",
+  "../Data/3.STAR/Fixed_fresh_K562_PEG_R1/Solo.out/GeneFull/raw/barcodes.tsv",
+  "../Data/3.STAR/Fixed_fresh_K562_PEG_R2/Solo.out/GeneFull/raw/barcodes.tsv",
+  "../Data/3.STAR/Fixed_frozen_K562_noPEG_R1/Solo.out/GeneFull/raw/barcodes.tsv",
+  "../Data/3.STAR/Fixed_frozen_K562_noPEG_R2/Solo.out/GeneFull/raw/barcodes.tsv",
+  "../Data/3.STAR/Fixed_frozen_K562_PEG_R1/Solo.out/GeneFull/raw/barcodes.tsv",
+  "../Data/3.STAR/Fixed_frozen_K562_PEG_R2/Solo.out/GeneFull/raw/barcodes.tsv"
+)
 
 filenames <- c(
-            'Fixed_fresh_K562_noPEG_R1',
-            'Fixed_fresh_K562_noPEG_R2',
-            'Fixed_fresh_K562_PEG_R1',
-            'Fixed_fresh_K562_PEG_R2',
-            'Fixed_frozen_K562_noPEG_R1',
-            'Fixed_frozen_K562_noPEG_R2',
-            'Fixed_frozen_K562_PEG_R1',
-            'Fixed_frozen_K562_PEG_R2')
+  "Fixed_fresh_K562_noPEG_R1",
+  "Fixed_fresh_K562_noPEG_R2",
+  "Fixed_fresh_K562_PEG_R1",
+  "Fixed_fresh_K562_PEG_R2",
+  "Fixed_frozen_K562_noPEG_R1",
+  "Fixed_frozen_K562_noPEG_R2",
+  "Fixed_frozen_K562_PEG_R1",
+  "Fixed_frozen_K562_PEG_R2"
+)
 ```
 
 
 ### Summary metrics for UMI distribution between samples before filtering with EmptyDrops
 ```{r no filtering, echo=TRUE, fig.height=8, fig.width=10, message=FALSE, warning=FALSE}
 # Read the samples and create a merged table for all samples
-experiments_no_filtering <- read_10X_samples(counts, barcodes, genes, 
-                                filenames, emptydrops_run = FALSE, fdr_threshold = 0.05)
+experiments_no_filtering <- read_10X_samples(counts, barcodes, genes,
+  filenames,
+  emptydrops_run = FALSE, fdr_threshold = 0.05
+)
 
 # Calculate distribution in each barcode
 experiments_no_filtering <- calculate_distributions(experiments_no_filtering, number_of_samples = 8)
@@ -121,13 +127,15 @@ total_knee_plot_Fixed_fresh_K562_noPEG_R1_no_filtering
 ### Summary metrics for UMI distribution between samples after filtering with EmptyDrops
 ```{r filtering1, echo=TRUE, fig.height=8, fig.width=10, message=FALSE, warning=FALSE}
 # Read the samples, perform the EmptyDrops filtering and create a merged table for all samples
-experiments_filtered <- read_10X_samples(counts, barcodes, genes, 
-                                   filenames, emptydrops_run = TRUE, fdr_threshold = 0.05)
+experiments_filtered <- read_10X_samples(counts, barcodes, genes,
+  filenames,
+  emptydrops_run = TRUE, fdr_threshold = 0.05
+)
 
 # Calculate distribution in each barcode
 experiments_filtered <- calculate_distributions(experiments_filtered, number_of_samples = 8)
 
-# Assign p-values to Barcodes from the unfiltered dataset 
+# Assign p-values to Barcodes from the unfiltered dataset
 experiments_filtered <- assign_non_filt_pvals(experiments_filtered, pvals)
 
 # Intersection plot

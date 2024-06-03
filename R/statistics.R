@@ -5,7 +5,7 @@ library(gridExtra)
 
 odds_ratio_analysis <- function(data, my_name) {
   results <- list()
-  
+
   for (i in 1:(ncol(data))) {
     sample_data <- rbind.data.frame(data[, i], rowSums(data) - data[, i])
     fisher_result <- fisher.test(sample_data)
@@ -17,7 +17,7 @@ odds_ratio_analysis <- function(data, my_name) {
     )
   }
   results_df <- do.call(rbind, results)
-  
+
   fisher_plot <- ggplot(results_df, aes(x = sample, y = odds_ratio, color = factor(sample))) +
     geom_pointrange(aes(ymin = lower_ci, ymax = upper_ci), size = 1) +
     geom_hline(yintercept = 1, linetype = "dashed", size = 1) +
@@ -28,9 +28,8 @@ odds_ratio_analysis <- function(data, my_name) {
     theme(
       axis.text.y = element_text(size = 16),
       axis.text.x = element_text(size = 14),
-      legend.position = "none")   
-  
+      legend.position = "none"
+    )
+
   return(fisher_plot)
 }
-
-

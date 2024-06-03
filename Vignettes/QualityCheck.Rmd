@@ -17,24 +17,26 @@ editor_options:
 ---
 
 ```{r setup, include=FALSE}
-knitr::opts_chunk$set(echo = TRUE,
-                      warning = FALSE, 
-                      message = FALSE)
+knitr::opts_chunk$set(
+  echo = TRUE,
+  warning = FALSE,
+  message = FALSE
+)
 ```
 
 ### Libs
 ```{r message=FALSE, warning=FALSE, include=FALSE}
-source('../R/sample_qc.R')
-source('../R/read_data.R')
-source('../R/emptyDrops_filtering.R')
+source("../R/sample_qc.R")
+source("../R/read_data.R")
+source("../R/emptyDrops_filtering.R")
 ```
 
 
 ### Sample quality before filtering
 ```{r fig.height=12, fig.width=16, message=FALSE, warning=FALSE}
-sample1 <- sc_matrix_10X(counts_path = '../Data/Solo.out_1/Gene/raw/matrix.mtx.gz', barcodes_path = '../Data/Solo.out_1/Gene/raw/barcodes.tsv.gz', genes_path = '../Data/Solo.out_1/Gene/raw/features.tsv.gz')
+sample1 <- sc_matrix_10X(counts_path = "../Data/Solo.out_1/Gene/raw/matrix.mtx.gz", barcodes_path = "../Data/Solo.out_1/Gene/raw/barcodes.tsv.gz", genes_path = "../Data/Solo.out_1/Gene/raw/features.tsv.gz")
 
-sample1_qc <- quality_metrics_one_sample(sample1, genes_path = '../Data/Solo.out_1/Gene/raw/features.tsv.gz', file_name = 'Solo1')
+sample1_qc <- quality_metrics_one_sample(sample1, genes_path = "../Data/Solo.out_1/Gene/raw/features.tsv.gz", file_name = "Solo1")
 ```
 
 
@@ -44,7 +46,7 @@ sample1_ED_filtered <- filter_barcodes_with_emptyDrops(matrix = sample1)
 
 filtered_barcodes <- return_filtered_barcodes_or_indices(sample1_ED_filtered)
 
-sample1_filtered_qc <- quality_metrics_one_sample(sample1, genes_path = '../Data/Solo.out_1/Gene/raw/features.tsv.gz', file_name = 'Solo1_filtered', filter = TRUE, filtered_barcodes_list = filtered_barcodes)
+sample1_filtered_qc <- quality_metrics_one_sample(sample1, genes_path = "../Data/Solo.out_1/Gene/raw/features.tsv.gz", file_name = "Solo1_filtered", filter = TRUE, filtered_barcodes_list = filtered_barcodes)
 ```
 
 

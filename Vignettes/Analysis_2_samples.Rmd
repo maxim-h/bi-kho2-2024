@@ -22,36 +22,44 @@ knitr::opts_chunk$set(echo = TRUE)
 
 ### Imports
 ```{r message=FALSE, warning=FALSE, include=FALSE}
-source('../R/samples_comparison.R')
-source('../R/plotting.R')
+source("../R/samples_comparison.R")
+source("../R/plotting.R")
 ```
 
 
 ### Datapaths
 ```{r paths, echo=TRUE, message=FALSE, warning=FALSE}
-counts <- c('../Data/Solo.out_1/Gene/raw/matrix.mtx.gz',
-            '../Data/Solo.out_2/Gene/raw/matrix.mtx.gz')
+counts <- c(
+  "../Data/Solo.out_1/Gene/raw/matrix.mtx.gz",
+  "../Data/Solo.out_2/Gene/raw/matrix.mtx.gz"
+)
 
-genes <- c('../Data/Solo.out_1/Gene/raw/features.tsv.gz',
-           '../Data/Solo.out_2/Gene/raw/features.tsv.gz')
+genes <- c(
+  "../Data/Solo.out_1/Gene/raw/features.tsv.gz",
+  "../Data/Solo.out_2/Gene/raw/features.tsv.gz"
+)
 
-barcodes <- c('../Data/Solo.out_1/Gene/raw/barcodes.tsv.gz',
-              '../Data/Solo.out_2/Gene/raw/barcodes.tsv.gz')
+barcodes <- c(
+  "../Data/Solo.out_1/Gene/raw/barcodes.tsv.gz",
+  "../Data/Solo.out_2/Gene/raw/barcodes.tsv.gz"
+)
 
-filenames <- c('Solo1', 'Solo2')
+filenames <- c("Solo1", "Solo2")
 ```
 
 ### Summary metrics for UMI distribution between samples before filtering with EmptyDrops
 ```{r no filtering, echo=TRUE, fig.height=12, fig.width=14, message=FALSE, warning=FALSE}
 # Read the samples and create a merged table for all samples
-experiments_no_filtering <- read_10X_samples(counts, barcodes, genes, 
-                                filenames, emptydrops_run = FALSE, fdr_threshold = 0.05)
+experiments_no_filtering <- read_10X_samples(counts, barcodes, genes,
+  filenames,
+  emptydrops_run = FALSE, fdr_threshold = 0.05
+)
 
 # Calculate distribution in each barcode
 experiments_no_filtering <- calculate_distributions(experiments_no_filtering, number_of_samples = 2)
 
 # Perform multinomial testing to test the departure of the UMI distribution from the reference distribution
-experiments_no_filtering <- multinomial_testing(experiments_no_filtering, number_of_samples = 2, prob=c(0.675, 1 - 0.675))
+experiments_no_filtering <- multinomial_testing(experiments_no_filtering, number_of_samples = 2, prob = c(0.675, 1 - 0.675))
 
 # Create a data of p-values for barcodes
 pvals <- experiments_no_filtering$non_filt_pvals
@@ -87,13 +95,15 @@ kp2sample_no_filtering
 ### Summary metrics for UMI distribution between samples after filtering with EmptyDrops
 ```{r filtering1, echo=TRUE, fig.height=8, fig.width=14, message=FALSE, warning=FALSE}
 # Read the samples, perform the EmptyDrops filtering and create a merged table for all samples
-experiments_filtered <- read_10X_samples(counts, barcodes, genes, 
-                                   filenames, emptydrops_run = TRUE, fdr_threshold = 0.05)
+experiments_filtered <- read_10X_samples(counts, barcodes, genes,
+  filenames,
+  emptydrops_run = TRUE, fdr_threshold = 0.05
+)
 
 # Calculate distribution in each barcode
 experiments_filtered <- calculate_distributions(experiments_filtered, number_of_samples = 2)
 
-# Assign p-values to Barcodes from the unfiltered dataset 
+# Assign p-values to Barcodes from the unfiltered dataset
 experiments_filtered <- assign_non_filt_pvals(experiments_filtered, pvals)
 
 # Intersection plot
